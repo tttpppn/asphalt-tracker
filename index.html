@@ -935,6 +935,26 @@ function updateMixList() {
   list.innerHTML = mixes.map(m => `<option value="${m}">`).join('');
 }
 
+let editingShiftId = null;
+
+function resetShiftForm() {
+  document.getElementById('shiftDate').value = '';
+  document.getElementById('shiftMix').value = '';
+  document.getElementById('shiftTons').value = '';
+  document.getElementById('shiftBridge').checked = false;
+  editingShiftId = null;
+  updateAddShiftButton();
+}
+
+function updateAddShiftButton() {
+  const btn = document.getElementById('addShiftBtn');
+  if (editingShiftId) {
+    btn.textContent = 'Update Shift';
+  } else {
+    btn.textContent = 'Add Shift';
+  }
+}
+
 function editShiftUI(id) {
   const shift = state.shifts.find(s => s.id === id);
   if (!shift) return;
@@ -944,19 +964,8 @@ function editShiftUI(id) {
   document.getElementById('shiftTons').value = shift.tonsCt;
   document.getElementById('shiftBridge').checked = shift.bridge;
 
-  const btn = document.getElementById('addShiftBtn');
-  const oldText = btn.textContent;
-  const origHandler = btn.onclick;
-  btn.textContent = 'Update Shift';
-  btn.onclick = () => {
-    editShift(id, document.getElementById('shiftDate').value, document.getElementById('shiftMix').value, document.getElementById('shiftTons').value, document.getElementById('shiftBridge').checked);
-    document.getElementById('shiftDate').value = '';
-    document.getElementById('shiftMix').value = '';
-    document.getElementById('shiftTons').value = '';
-    document.getElementById('shiftBridge').checked = false;
-    btn.textContent = oldText;
-    btn.onclick = origHandler;
-  };
+  editingShiftId = id;
+  updateAddShiftButton();
 }
 
 // ============================================================================
@@ -1236,16 +1245,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Event listeners
   document.getElementById('addShiftBtn').onclick = () => {
-    addShift(
-      document.getElementById('shiftDate').value,
-      document.getElementById('shiftMix').value,
-      document.getElementById('shiftTons').value,
-      document.getElementById('shiftBridge').checked
-    );
-    document.getElementById('shiftDate').value = '';
-    document.getElementById('shiftMix').value = '';
-    document.getElementById('shiftTons').value = '';
-    document.getElementById('shiftBridge').checked = false;
+    if (editingShiftId) {
+      editShift(
+        editingShiftId,
+        document.getElementById('shiftDate').value,
+        document.getElementById('shiftMix').value,
+        document.getElementById('shiftTons').value,
+        document.getElementById('shiftBridge').checked
+      );
+    } else {
+      addShift(
+        document.getElementById('shiftDate').value,
+        document.getElementById('shiftMix').value,
+        document.getElementById('shiftTons').value,
+        document.getElementById('shiftBridge').checked
+      );
+    }
+    resetShiftForm();
   };
 
   document.getElementById('newLotBtn').onclick = () => {
