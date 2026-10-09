@@ -348,7 +348,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
     const existing = lotsForMix[key];
 
     let requiredIndex = -1;
-    let lastShiftDate = null;
+    let currentLotCreatedDate = null;
 
     for (const entry of ledger) {
       if (entry.excluded) continue;
@@ -357,12 +357,14 @@ function reconcileLots(state, ledgers, today = new Date()) {
       const neededByTonnage = Math.ceil(entry.afterCt / toCt(LOT_TONS)) - 1;
       let neededByTime = neededByTonnage;
 
-      if (lastShiftDate && daysBetween(lastShiftDate, shiftDate) > WINDOW_DAYS) {
+      if (currentLotCreatedDate && daysBetween(currentLotCreatedDate, shiftDate) >= WINDOW_DAYS) {
         neededByTime = requiredIndex + 1;
+        currentLotCreatedDate = shiftDate;
+      } else if (currentLotCreatedDate === null) {
+        currentLotCreatedDate = shiftDate;
       }
 
       requiredIndex = Math.max(requiredIndex, Math.max(neededByTonnage, neededByTime));
-      lastShiftDate = shiftDate;
     }
 
     for (let idx = 0; idx <= requiredIndex; idx++) {
