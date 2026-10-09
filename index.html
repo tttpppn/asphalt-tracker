@@ -290,9 +290,9 @@ function isSampleInRange(lot, n, tonCt) {
 // ============================================================================
 function generateSampleTons(lot, ledger, rng = Math.random) {
   const samples = [];
-  // Calculate how much tonnage this lot currently has
-  const lotTonnage = getLotTonnageFromLedger(lot, ledger);
-  const sublotsFilled = Math.ceil(lotTonnage / SUBLOT_TONS);
+  // For now, generate samples for all 7 sublots (full lot assumption)
+  // User must click Regenerate after tonnage stabilizes
+  const sublotsFilled = SUBLOTS_PER_LOT;
 
   // Only generate samples for sublots that will receive tonnage
   for (let n = 1; n <= sublotsFilled; n++) {
