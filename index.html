@@ -482,20 +482,21 @@ function derive(state, today = new Date()) {
     const key = normMix(lot.mix);
     const ledger = ledgers[key] || [];
     const lotTonnage = getLotTonnageFromLedger(lot, ledger);
+    const lotRange = lotRangeCt(lot);
 
-    const samplesOutOfRange = lot.samples.some(s => s.tonCt > lotTonnage);
-    if (lotTonnage > 0 && (lot.samples.every(s => s.tonCt === null) || samplesOutOfRange)) {
-      const samples = [];
-      for (let n = 1; n <= SUBLOTS_PER_LOT; n++) {
-        const sublotStart = (n - 1) * toCt(SUBLOT_TONS);
-        const sublotEnd = n * toCt(SUBLOT_TONS);
-        if (sublotStart >= lotTonnage) break;
-        const minTons = Math.max(sublotStart / 100, 0);
-        const maxTons = Math.min(sublotEnd / 100 - 0.01, lotTonnage / 100);
+    for (let n = 1; n <= SUBLOTS_PER_LOT; n++) {
+      const absStart = lotRange.start + (n - 1) * toCt(SUBLOT_TONS);
+      const absEnd = lotRange.start + n * toCt(SUBLOT_TONS);
+      const sample = lot.samples[n - 1];
+
+      if (absStart >= lotRange.start + lotTonnage) {
+        if (sample && sample.tonCt !== null) lot.samples[n - 1] = { tonCt: null, taken: false };
+      } else if (!sample || sample.tonCt === null) {
+        const minTons = absStart / 100;
+        const maxTons = Math.min(absEnd / 100 - 0.01, (lotRange.start + lotTonnage) / 100);
         const tons = Math.floor(randInt(minTons * 100, maxTons * 100, Math.random) / 100);
-        samples.push({ tonCt: tons * 100, taken: false });
+        lot.samples[n - 1] = { tonCt: tons * 100, taken: false };
       }
-      lot.samples = samples;
     }
   });
 
