@@ -351,21 +351,28 @@ function reconcileLots(state, ledgers, today = new Date()) {
     const existing = lotsForMix[key];
 
     const activeLots = existing.filter(lot => {
-      const createdDate = parseLocalDate(lot.createdDate);
-      return daysBetween(createdDate, today) < WINDOW_DAYS;
+      const lotRange = lotRangeCt(lot);
+      const lastShiftInLot = ledger.filter(e => !e.excluded && e.afterCt > lotRange.start).pop();
+      if (!lastShiftInLot) return daysBetween(parseLocalDate(lot.createdDate), today) < WINDOW_DAYS;
+      const shiftDate = parseLocalDate(lastShiftInLot.shift.date);
+      return daysBetween(shiftDate, today) < WINDOW_DAYS;
     });
 
     const lastActiveLot = activeLots.length > 0 ? Math.max(...activeLots.map(l => l.index)) : -1;
 
     for (let idx = lastActiveLot + 1; idx <= neededIndex; idx++) {
       const nextLotNo = state.nextLotNo === undefined ? state.settings.startLotNo + state.lots.length : state.nextLotNo;
+      const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
+      const creatingShift = ledger.find(e => !e.excluded && e.afterCt > lotRange.start);
+      const lotDate = creatingShift ? creatingShift.shift.date : fmtLocalDate(today);
+
       const newLot = {
         lotNo: nextLotNo,
         mix: state.shifts.find(s => normMix(s.mix) === key).mix,
         mixKey: key,
         index: idx,
         createdBy: 'auto',
-        createdDate: fmtLocalDate(today),
+        createdDate: lotDate,
         samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
       };
       state.nextLotNo = nextLotNo + 1;
