@@ -418,29 +418,41 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
 
   const sorted = [...lotsForMix].sort((a, b) => a.index - b.index);
 
-  // First pass: collect all non-expired lots
+  // First pass: collect all non-expired AND not-full lots
   const activeLotsIndices = new Set();
   sorted.forEach(lot => {
     const lotRange = lotRangeCt(lot);
     console.log(`\nLot ${lot.lotNo} (index ${lot.index}): range [${lotRange.start/100}t, ${lotRange.end/100}t)`);
     console.log(`  createdDate: ${lot.createdDate}`);
 
+    // Check 1: Is lot full? (already at or past 3500 tons for this lot)
+    const lotCapacity = toCt(LOT_TONS);
+    const lotIsFull = (lotRange.end - lotRange.start) <= 0; // If range is collapsed, lot is full
+    if (lotIsFull) {
+      console.log(`  ✗ FULL (capacity exceeded)`);
+    }
+
+    // Check 2: Is lot expired? (30 days since creation)
+    let isExpired = false;
     if (shiftDate && lot.createdDate) {
       const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
       const shiftD = parseLocalDate(shiftDate);
       const expirationD = parseLocalDate(expirationDate);
       console.log(`  expirationDate: ${expirationDate}`);
-      console.log(`  comparing: shiftDate(${shiftDate}) <= expirationDate(${expirationDate})? ${shiftD <= expirationD}`);
+      console.log(`  30-day check: shiftDate(${shiftDate}) <= expirationDate(${expirationDate})? ${shiftD <= expirationD}`);
 
-      if (shiftD <= expirationD) {
-        console.log(`  ✓ ACTIVE (not expired)`);
-        activeLotsIndices.add(lot.index);
-      } else {
-        console.log(`  ✗ EXPIRED (skip)`);
+      if (shiftD > expirationD) {
+        console.log(`  ✗ EXPIRED (30+ days old)`);
+        isExpired = true;
       }
-    } else {
-      console.log(`  ✓ ACTIVE (no date check)`);
+    }
+
+    // Lot is ACTIVE only if it's NOT full AND NOT expired
+    if (!lotIsFull && !isExpired) {
+      console.log(`  ✓ ACTIVE (has capacity & not expired)`);
       activeLotsIndices.add(lot.index);
+    } else if (lotIsFull && !isExpired) {
+      console.log(`  ✗ CLOSED (full, move to next lot)`);
     }
   });
 
