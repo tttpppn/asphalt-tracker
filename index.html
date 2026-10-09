@@ -504,9 +504,20 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
 // ============================================================================
 // SAMPLE DUE DATE
 // ============================================================================
-function findSampleDate(ledger, sampleCt) {
+function findSampleDate(ledger, sampleCt, lot) {
   for (const entry of ledger) {
     if (entry.excluded) continue;
+    
+    // Skip shifts that come after the lot's expiration date
+    if (lot && lot.createdDate) {
+      const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
+      const shiftDate = parseLocalDate(entry.shift.date);
+      const expirationD = parseLocalDate(expirationDate);
+      if (shiftDate > expirationD) {
+        continue; // Skip this shift, lot has expired
+      }
+    }
+    
     if (entry.afterCt >= sampleCt) {
       return entry.shift.date;
     }
@@ -639,7 +650,7 @@ function derive(state, today = new Date()) {
 
       if (sample.tonCt !== null) {
         const relativeTonCt = sample.tonCt - lotRange.start;
-        sampleDate = findSampleDate(lotLedger, relativeTonCt);
+        sampleDate = findSampleDate(lotLedger, relativeTonCt, lot);
         status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
       }
 
