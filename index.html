@@ -448,42 +448,31 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   const lotsToUse = activeLotsIndices.size > 0 ? activeLotsIndices : null;
   console.log(`Using filter: ${lotsToUse ? 'non-expired only' : 'all lots (fallback)'}`);
 
-  // Second pass: allocate to non-expired lots, or all lots if none are active
+  // Second pass: allocate ALL remaining tonnage to the FIRST active (non-expired) lot
   const result = [];
   let remaining = afterCt - beforeCt;
-  let currentCt = beforeCt;
 
   sorted.forEach(lot => {
     console.log(`\n  Processing Lot ${lot.lotNo}:`);
 
-    // Skip expired lots only if non-expired lots are available
+    // Skip expired lots entirely
     if (lotsToUse && !lotsToUse.has(lot.index)) {
-      console.log(`    SKIP: filtered out`);
+      console.log(`    SKIP: EXPIRED - cannot allocate to expired lots`);
       return;
     }
 
-    const range = lotRangeCt(lot);
-    if (currentCt >= range.end) {
-      console.log(`    SKIP: currentCt(${currentCt/100}t) >= range.end(${range.end/100}t)`);
-      return;
-    }
-
-    const entryPoint = Math.max(currentCt, range.start);
-    const exitPoint = Math.min(currentCt + remaining, range.end);
-    const ctInLot = exitPoint - entryPoint;
-
-    console.log(`    range: [${range.start/100}, ${range.end/100}t]`);
-    console.log(`    entryPoint: ${entryPoint/100}t, exitPoint: ${exitPoint/100}t, amount: ${ctInLot/100}t`);
-
-    if (exitPoint > entryPoint) {
-      console.log(`    ✓ ALLOCATED ${ctInLot/100}t to Lot ${lot.lotNo}`);
-      result.push({ lotNo: lot.lotNo, ct: ctInLot });
-      remaining -= ctInLot;
-      currentCt = exitPoint;
-    } else {
-      console.log(`    SKIP: no overlap`);
+    // Allocate ALL remaining tonnage to the first active lot
+    if (remaining > 0) {
+      console.log(`    ✓ ACTIVE LOT - allocating ALL remaining ${remaining/100}t to Lot ${lot.lotNo}`);
+      result.push({ lotNo: lot.lotNo, ct: remaining });
+      remaining = 0;
+      return; // Stop after filling first active lot
     }
   });
+
+  if (remaining > 0) {
+    console.log(`\n⚠ WARNING: ${remaining/100}t unallocated (no active lots)`);
+  }
 
   console.log(`\nFinal result: ${result.length} lots, splits:`, result.map(r => `Lot${r.lotNo}:${r.ct/100}t`).join(', '));
   return result;
