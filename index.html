@@ -349,6 +349,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
 
     let requiredIndex = -1;
     let currentLotCreatedDate = null;
+    const lotCreatedByShift = {}; // Track which shift created each lot index
 
     for (const entry of ledger) {
       if (entry.excluded) continue;
@@ -360,6 +361,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
       if (currentLotCreatedDate && daysBetween(currentLotCreatedDate, shiftDate) >= WINDOW_DAYS) {
         neededByTime = requiredIndex + 1;
         currentLotCreatedDate = shiftDate;
+        lotCreatedByShift[neededByTime] = entry.shift.date;
       } else if (currentLotCreatedDate === null) {
         currentLotCreatedDate = shiftDate;
       }
@@ -376,7 +378,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
       const nextLotNo = state.nextLotNo;
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
       const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
-      const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : fmtLocalDate(today);
+      const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : lotCreatedByShift[idx] || fmtLocalDate(today);
 
       const newLot = {
         lotNo: nextLotNo,
