@@ -344,28 +344,34 @@ function reconcileLots(state, ledgers, today = new Date()) {
     const ledger = ledgers[key];
     if (ledger.length === 0) return;
 
-    const lastAfter = ledger[ledger.length - 1].afterCt;
-    const neededIndex = Math.ceil(lastAfter / toCt(LOT_TONS)) - 1;
-
     if (!lotsForMix[key]) lotsForMix[key] = [];
     const existing = lotsForMix[key];
 
-    const activeLots = existing.filter(lot => {
-      const lotRange = lotRangeCt(lot);
-      const shiftsInLot = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
-      if (shiftsInLot.length === 0) return daysBetween(parseLocalDate(lot.createdDate), today) < WINDOW_DAYS;
-      const lastShiftInLot = shiftsInLot[shiftsInLot.length - 1];
-      const shiftDate = parseLocalDate(lastShiftInLot.shift.date);
-      return daysBetween(shiftDate, today) < WINDOW_DAYS;
-    });
+    let requiredIndex = -1;
+    let lastShiftDate = null;
 
-    const lastActiveLot = activeLots.length > 0 ? Math.max(...activeLots.map(l => l.index)) : -1;
+    for (const entry of ledger) {
+      if (entry.excluded) continue;
 
-    for (let idx = lastActiveLot + 1; idx <= neededIndex; idx++) {
+      const shiftDate = parseLocalDate(entry.shift.date);
+      const neededByTonnage = Math.ceil(entry.afterCt / toCt(LOT_TONS)) - 1;
+      let neededByTime = neededByTonnage;
+
+      if (lastShiftDate && daysBetween(lastShiftDate, shiftDate) > WINDOW_DAYS) {
+        neededByTime = requiredIndex + 1;
+      }
+
+      requiredIndex = Math.max(requiredIndex, Math.max(neededByTonnage, neededByTime));
+      lastShiftDate = shiftDate;
+    }
+
+    for (let idx = 0; idx <= requiredIndex; idx++) {
+      if (existing.some(l => l.index === idx)) continue;
+
       const nextLotNo = state.nextLotNo === undefined ? state.settings.startLotNo + state.lots.length : state.nextLotNo;
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
-      const creatingShift = ledger.find(e => !e.excluded && e.afterCt > lotRange.start);
-      const lotDate = creatingShift ? creatingShift.shift.date : fmtLocalDate(today);
+      const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
+      const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : fmtLocalDate(today);
 
       const newLot = {
         lotNo: nextLotNo,
