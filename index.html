@@ -781,16 +781,24 @@ function createLot(mix, lotNo) {
 }
 
 function generateSamples(lotNo, seed = null) {
+  console.log(`generateSamples called for Lot ${lotNo}`);
   const lot = state.lots.find(l => l.lotNo === lotNo);
-  if (!lot) return;
+  if (!lot) {
+    console.log(`ERROR: Lot ${lotNo} not found`);
+    return;
+  }
 
   const rng = seed !== null ? mulberry32(seed) : Math.random;
   const ledgers = computeMixLedgers(state);
   const ledger = ledgers[lot.mixKey] || [];
+  console.log(`ledger for ${lot.mixKey}: ${ledger.length} entries`);
+
   const samples = generateSampleTons(lot, ledger, rng);
+  console.log(`generated ${samples.length} samples:`, samples.map(s => s.tonCt));
 
   lot.samples = samples;
   commit();
+  console.log(`samples committed for Lot ${lotNo}`);
 }
 
 function regenerateSamples(lotNo, seed = null) {
