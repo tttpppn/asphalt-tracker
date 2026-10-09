@@ -795,10 +795,14 @@ function generateSamples(lotNo, seed = null) {
 
   const samples = generateSampleTons(lot, ledger, rng);
   console.log(`generated ${samples.length} samples:`, samples.map(s => s.tonCt));
+  console.log(`BEFORE: lot.samples=`, lot.samples.map(s => s.tonCt));
 
   lot.samples = samples;
+  console.log(`AFTER assignment: lot.samples=`, lot.samples.map(s => s.tonCt));
+
   commit();
-  console.log(`samples committed for Lot ${lotNo}`);
+  const lotAfterCommit = state.lots.find(l => l.lotNo === lotNo);
+  console.log(`AFTER commit: lotAfterCommit.samples=`, lotAfterCommit?.samples.map(s => s.tonCt));
 }
 
 function regenerateSamples(lotNo, seed = null) {
