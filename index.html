@@ -416,9 +416,10 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
 
   sorted.forEach(lot => {
     // Skip lots that have expired (shift date is after expiration date)
-    if (shiftDate && lot.expirationDate) {
+    if (shiftDate && lot.createdDate) {
+      const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
       const shiftD = parseLocalDate(shiftDate);
-      const expirationD = parseLocalDate(lot.expirationDate);
+      const expirationD = parseLocalDate(expirationDate);
       if (shiftD > expirationD) return; // Lot has expired, skip it
     }
 
