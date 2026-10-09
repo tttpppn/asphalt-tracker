@@ -397,7 +397,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
 // ============================================================================
 // SPLIT CALCULATION
 // ============================================================================
-function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix) {
+function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, today = new Date()) {
   if (lotsForMix.length === 0) return [];
 
   const sorted = [...lotsForMix].sort((a, b) => a.index - b.index);
@@ -407,6 +407,9 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix) {
   let currentCt = beforeCt;
 
   sorted.forEach(lot => {
+    const isExpired = shiftDate && lot.createdDate && daysBetween(parseLocalDate(lot.createdDate), parseLocalDate(shiftDate)) >= WINDOW_DAYS;
+    if (isExpired) return;
+
     const range = lotRangeCt(lot);
     if (currentCt >= range.end) return;
 
@@ -505,7 +508,9 @@ function derive(state, today = new Date()) {
     const splits = shift.bridge ? [] : splitShiftAcrossLots(
       mixTotalBefore,
       mixTotalBefore + toCt(shift.tonsCt),
-      lotsForMix
+      lotsForMix,
+      shift.date,
+      today
     );
 
     if (shift.bridge) {
