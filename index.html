@@ -502,26 +502,34 @@ function derive(state, today = new Date()) {
 
   const shiftRows = [];
   const sortedShifts = sortShifts(state.shifts);
-  const mixTotals = {};
+  const lotTotals = {};
 
   sortedShifts.forEach(shift => {
     const key = normMix(shift.mix);
-    if (!mixTotals[key]) mixTotals[key] = 0;
-
     const lotsForMix = state.lots.filter(l => l.mixKey === key);
+
+    let mixTotalBefore = 0;
+    Object.keys(lotTotals).forEach(lotKey => {
+      if (lotKey.startsWith(key + ':')) mixTotalBefore += lotTotals[lotKey];
+    });
+
     const splits = shift.bridge ? [] : splitShiftAcrossLots(
-      mixTotals[key],
-      mixTotals[key] + toCt(shift.tonsCt),
+      mixTotalBefore,
+      mixTotalBefore + toCt(shift.tonsCt),
       lotsForMix
     );
 
-    if (!shift.bridge) {
-      mixTotals[key] += toCt(shift.tonsCt);
+    let lotTotal = 0;
+    if (!shift.bridge && splits.length > 0) {
+      const primaryLot = splits[0].lot;
+      const lotKey = `${key}:${primaryLot.lotNo}`;
+      lotTotals[lotKey] = (lotTotals[lotKey] || 0) + splits[0].tons;
+      lotTotal = lotTotals[lotKey];
     }
 
     shiftRows.push({
       shift,
-      mixTotal: mixTotals[key],
+      mixTotal: lotTotal,
       splits: shift.bridge ? [] : splits
     });
   });
@@ -546,7 +554,8 @@ function derive(state, today = new Date()) {
       let status = 'Pending';
 
       if (sample.tonCt !== null) {
-        sampleDate = findSampleDate(lotLedger, sample.tonCt);
+        const relativeTonCt = sample.tonCt - lotRange.start;
+        sampleDate = findSampleDate(lotLedger, relativeTonCt);
         status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
       }
 
