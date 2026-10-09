@@ -217,6 +217,12 @@ function fmtLocalDate(date) {
   return `${y}-${m}-${d}`;
 }
 
+function addDays(dateStr, days) {
+  const date = parseLocalDate(dateStr);
+  date.setDate(date.getDate() + days);
+  return fmtLocalDate(date);
+}
+
 function daysBetween(d1, d2) {
   const ms1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
   const ms2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
@@ -387,6 +393,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
         index: idx,
         createdBy: 'auto',
         createdDate: lotDate,
+        expirationDate: addDays(lotDate, WINDOW_DAYS),
         samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
       };
       state.nextLotNo = nextLotNo + 1;
@@ -403,21 +410,17 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   if (lotsForMix.length === 0) return [];
 
   const sorted = [...lotsForMix].sort((a, b) => a.index - b.index);
-
-  // Check if any non-expired lots exist
-  const hasNonExpiredLots = sorted.some(lot => {
-    if (!shiftDate || !lot.createdDate) return true;
-    return daysBetween(parseLocalDate(lot.createdDate), parseLocalDate(shiftDate)) < WINDOW_DAYS;
-  });
-
   const result = [];
   let remaining = afterCt - beforeCt;
   let currentCt = beforeCt;
 
   sorted.forEach(lot => {
-    // Only skip expired lots if there are non-expired lots available
-    const isExpired = hasNonExpiredLots && shiftDate && lot.createdDate && daysBetween(parseLocalDate(lot.createdDate), parseLocalDate(shiftDate)) >= WINDOW_DAYS;
-    if (isExpired) return;
+    // Skip lots that have expired (shift date is after expiration date)
+    if (shiftDate && lot.expirationDate) {
+      const shiftD = parseLocalDate(shiftDate);
+      const expirationD = parseLocalDate(lot.expirationDate);
+      if (shiftD > expirationD) return; // Lot has expired, skip it
+    }
 
     const range = lotRangeCt(lot);
     if (currentCt >= range.end) return;
