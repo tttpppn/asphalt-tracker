@@ -365,10 +365,6 @@ function reconcileLots(state, ledgers, today = new Date()) {
       lastShiftDate = shiftDate;
     }
 
-    if (lastShiftDate && daysBetween(lastShiftDate, today) > WINDOW_DAYS) {
-      requiredIndex = Math.max(requiredIndex, requiredIndex + 1);
-    }
-
     for (let idx = 0; idx <= requiredIndex; idx++) {
       if (existing.some(l => l.index === idx)) continue;
 
