@@ -403,13 +403,20 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   if (lotsForMix.length === 0) return [];
 
   const sorted = [...lotsForMix].sort((a, b) => a.index - b.index);
-  const result = [];
 
+  // Check if any non-expired lots exist
+  const hasNonExpiredLots = sorted.some(lot => {
+    if (!shiftDate || !lot.createdDate) return true;
+    return daysBetween(parseLocalDate(lot.createdDate), parseLocalDate(shiftDate)) < WINDOW_DAYS;
+  });
+
+  const result = [];
   let remaining = afterCt - beforeCt;
   let currentCt = beforeCt;
 
   sorted.forEach(lot => {
-    const isExpired = shiftDate && lot.createdDate && daysBetween(parseLocalDate(lot.createdDate), parseLocalDate(shiftDate)) >= WINDOW_DAYS;
+    // Only skip expired lots if there are non-expired lots available
+    const isExpired = hasNonExpiredLots && shiftDate && lot.createdDate && daysBetween(parseLocalDate(lot.createdDate), parseLocalDate(shiftDate)) >= WINDOW_DAYS;
     if (isExpired) return;
 
     const range = lotRangeCt(lot);
