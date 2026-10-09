@@ -420,11 +420,18 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
       const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
       const shiftD = parseLocalDate(shiftDate);
       const expirationD = parseLocalDate(expirationDate);
-      if (shiftD > expirationD) return; // Lot has expired, skip it
+      if (shiftD > expirationD) {
+        console.log(`Skipping Lot ${lot.lotNo}: expired (${expirationDate} < ${shiftDate})`);
+        return; // Lot has expired, skip it
+      }
+      console.log(`Lot ${lot.lotNo}: not expired (${expirationDate} >= ${shiftDate})`);
     }
 
     const range = lotRangeCt(lot);
-    if (currentCt >= range.end) return;
+    if (currentCt >= range.end) {
+      console.log(`Lot ${lot.lotNo}: already full (${currentCt} >= ${range.end})`);
+      return;
+    }
 
     const entryPoint = Math.max(currentCt, range.start);
     const exitPoint = Math.min(currentCt + remaining, range.end);
