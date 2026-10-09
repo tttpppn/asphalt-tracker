@@ -288,15 +288,26 @@ function isSampleInRange(lot, n, tonCt) {
 // ============================================================================
 // SAMPLE GENERATION
 // ============================================================================
-function generateSampleTons(lot, rng = Math.random) {
+function generateSampleTons(lot, ledger, rng = Math.random) {
   const samples = [];
-  for (let n = 1; n <= SUBLOTS_PER_LOT; n++) {
+  // Calculate how much tonnage this lot currently has
+  const lotTonnage = getLotTonnageFromLedger(lot, ledger);
+  const sublotsFilled = Math.ceil(lotTonnage / SUBLOT_TONS);
+
+  // Only generate samples for sublots that will receive tonnage
+  for (let n = 1; n <= sublotsFilled; n++) {
     const range = sublotRangeCt(lot, n);
     const minTons = range.start / 100;
     const maxTons = range.end / 100 - 0.01;
     const tons = Math.floor(randInt(minTons * 100, maxTons * 100, rng) / 100);
     samples.push({ tonCt: tons * 100, taken: false });
   }
+
+  // Fill remaining sublots with null (not generated)
+  for (let n = sublotsFilled + 1; n <= SUBLOTS_PER_LOT; n++) {
+    samples.push({ tonCt: null, taken: false });
+  }
+
   return samples;
 }
 
@@ -763,7 +774,9 @@ function generateSamples(lotNo, seed = null) {
   if (!lot) return;
 
   const rng = seed !== null ? mulberry32(seed) : Math.random;
-  const samples = generateSampleTons(lot, rng);
+  const ledgers = computeMixLedgers(state);
+  const ledger = ledgers[lot.mixKey] || [];
+  const samples = generateSampleTons(lot, ledger, rng);
 
   lot.samples = samples;
   commit();
@@ -774,7 +787,9 @@ function regenerateSamples(lotNo, seed = null) {
   if (!lot) return;
 
   const rng = seed !== null ? mulberry32(seed) : Math.random;
-  const samples = generateSampleTons(lot, rng);
+  const ledgers = computeMixLedgers(state);
+  const ledger = ledgers[lot.mixKey] || [];
+  const samples = generateSampleTons(lot, ledger, rng);
 
   lot.samples = samples;
   commit();
@@ -1239,9 +1254,11 @@ function runSelfTest() {
   let testC = true;
   for (let i = 0; i < 100; i++) {
     const lot = { index: 0, mixKey: 'test' };
-    const samples = generateSampleTons(lot, mulberry32(42 + i));
+    // Simulate a full lot for testing
+    const testLedger = [{ shift: { date: '2026-01-01' }, beforeCt: 0, afterCt: toCt(3500), excluded: false }];
+    const samples = generateSampleTons(lot, testLedger, mulberry32(42 + i));
     samples.forEach((s, idx) => {
-      if (!isSampleInRange(lot, idx + 1, s.tonCt)) {
+      if (s.tonCt !== null && !isSampleInRange(lot, idx + 1, s.tonCt)) {
         testC = false;
       }
     });
