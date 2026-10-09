@@ -478,6 +478,16 @@ function derive(state, today = new Date()) {
 
   reconcileLots(state, ledgers, today);
 
+  state.lots.forEach(lot => {
+    const key = normMix(lot.mix);
+    const ledger = ledgers[key] || [];
+    const lotTonnage = getLotTonnageFromLedger(lot, ledger);
+
+    if (lotTonnage > 0 && lot.samples.every(s => s.tonCt === null)) {
+      lot.samples = generateSampleTons(lot);
+    }
+  });
+
   const shiftRows = [];
   const sortedShifts = sortShifts(state.shifts);
   const mixTotals = {};
