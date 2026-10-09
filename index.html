@@ -448,26 +448,15 @@ function sampleStatus(totalCt, sampleCt, taken) {
 // 30-DAY WINDOW
 // ============================================================================
 function lotWindow(lot, ledger, today) {
-  let firstDate = null;
-  let lotStart = toCt(lot.index * LOT_TONS);
+  if (!lot.createdDate) return null;
 
-  for (const entry of ledger) {
-    if (entry.excluded) continue;
-    if (entry.beforeCt < toCt((lot.index + 1) * LOT_TONS) && entry.afterCt > lotStart) {
-      firstDate = entry.shift.date;
-      break;
-    }
-  }
-
-  if (!firstDate) return null;
-
-  const d1 = parseLocalDate(firstDate);
+  const d1 = parseLocalDate(lot.createdDate);
   const dayN = daysBetween(d1, today) + 1;
   let level = 'ok';
   if (dayN >= WINDOW_DAYS + 1) level = 'over';
   else if (dayN >= 25) level = 'warn';
 
-  return { firstDate, dayN, level };
+  return { firstDate: lot.createdDate, dayN, level };
 }
 
 // ============================================================================
