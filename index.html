@@ -352,8 +352,9 @@ function reconcileLots(state, ledgers, today = new Date()) {
 
     const activeLots = existing.filter(lot => {
       const lotRange = lotRangeCt(lot);
-      const lastShiftInLot = ledger.filter(e => !e.excluded && e.afterCt > lotRange.start).pop();
-      if (!lastShiftInLot) return daysBetween(parseLocalDate(lot.createdDate), today) < WINDOW_DAYS;
+      const shiftsInLot = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
+      if (shiftsInLot.length === 0) return daysBetween(parseLocalDate(lot.createdDate), today) < WINDOW_DAYS;
+      const lastShiftInLot = shiftsInLot[shiftsInLot.length - 1];
       const shiftDate = parseLocalDate(lastShiftInLot.shift.date);
       return daysBetween(shiftDate, today) < WINDOW_DAYS;
     });
