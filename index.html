@@ -368,7 +368,10 @@ function reconcileLots(state, ledgers, today = new Date()) {
     for (let idx = 0; idx <= requiredIndex; idx++) {
       if (existing.some(l => l.index === idx)) continue;
 
-      const nextLotNo = state.nextLotNo === undefined ? state.settings.startLotNo + state.lots.length : state.nextLotNo;
+      if (state.nextLotNo === undefined) {
+        state.nextLotNo = Math.max(...state.lots.map(l => l.lotNo), state.settings.startLotNo - 1) + 1;
+      }
+      const nextLotNo = state.nextLotNo;
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
       const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
       const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : fmtLocalDate(today);
