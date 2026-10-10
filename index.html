@@ -153,6 +153,7 @@
         <input type="text" id="shiftMix" placeholder="Mix (e.g., PMA0.5)" list="mixList" style="width: 150px;">
         <datalist id="mixList"></datalist>
         <input type="number" id="shiftTons" placeholder="Tons" step="0.01" min="0" style="width: 100px;">
+        <input type="text" id="shiftLocations" placeholder="Locations (e.g., North, South)" style="width: 200px;">
         <label><input type="checkbox" id="shiftBridge"> Bridge deck</label>
         <button id="addShiftBtn">Add Shift</button>
       </div>
@@ -163,6 +164,7 @@
             <th>Mix</th>
             <th>Shift Tons</th>
             <th>Total Lot Tons</th>
+            <th>Locations</th>
             <th>Bridge</th>
             <th>Actions</th>
           </tr>
@@ -895,7 +897,7 @@ function commit() {
   render();
 }
 
-function addShift(date, mix, tons, bridge) {
+function addShift(date, mix, tons, locations, bridge) {
   if (!date || !mix || !tons) {
     showBanner('Date, mix, and tons are required', 'error');
     return;
@@ -907,17 +909,19 @@ function addShift(date, mix, tons, bridge) {
     date,
     mix: mix.trim(),
     tonsCt: parseFloat(tons),
+    locations: (locations || '').trim(),
     bridge: !!bridge
   });
   commit();
 }
 
-function editShift(id, date, mix, tons, bridge) {
+function editShift(id, date, mix, tons, locations, bridge) {
   const shift = state.shifts.find(s => s.id === id);
   if (shift) {
     shift.date = date;
     shift.mix = mix.trim();
     shift.tonsCt = parseFloat(tons);
+    shift.locations = (locations || '').trim();
     shift.bridge = !!bridge;
     commit();
   }
@@ -1207,12 +1211,13 @@ function renderShiftTable(derived) {
       <td>${shift.mix}</td>
       <td>${displayAmount}${lotInfo}</td>
       <td>${total}</td>
+      <td>${shift.locations || '—'}</td>
       <td>${bridge}</td>
       <td>
         <button class="secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editShiftUI('${shift.id}')">Edit</button>
         <button class="danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="if (confirm('Delete this shift?')) deleteShift('${shift.id}')">Delete</button>
       </td>
-    </tr>${splitNote ? '<tr><td colspan="6">' + splitNote + '</td></tr>' : ''}`;
+    </tr>${splitNote ? '<tr><td colspan="7">' + splitNote + '</td></tr>' : ''}`;
   });
 }
 
@@ -1274,6 +1279,7 @@ function resetShiftForm() {
   document.getElementById('shiftDate').value = '';
   document.getElementById('shiftMix').value = '';
   document.getElementById('shiftTons').value = '';
+  document.getElementById('shiftLocations').value = '';
   document.getElementById('shiftBridge').checked = false;
   editingShiftId = null;
   updateAddShiftButton();
@@ -1295,6 +1301,7 @@ function editShiftUI(id) {
   document.getElementById('shiftDate').value = shift.date;
   document.getElementById('shiftMix').value = shift.mix;
   document.getElementById('shiftTons').value = shift.tonsCt;
+  document.getElementById('shiftLocations').value = shift.locations || '';
   document.getElementById('shiftBridge').checked = shift.bridge;
 
   editingShiftId = id;
@@ -1586,6 +1593,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('shiftDate').value,
         document.getElementById('shiftMix').value,
         document.getElementById('shiftTons').value,
+        document.getElementById('shiftLocations').value,
         document.getElementById('shiftBridge').checked
       );
     } else {
@@ -1593,6 +1601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('shiftDate').value,
         document.getElementById('shiftMix').value,
         document.getElementById('shiftTons').value,
+        document.getElementById('shiftLocations').value,
         document.getElementById('shiftBridge').checked
       );
     }
