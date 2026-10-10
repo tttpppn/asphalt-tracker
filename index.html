@@ -274,38 +274,80 @@ function sublotRangeCt(lot, n) {
 
 function getLotTonnageFromLedger(lot, ledger) {
   const range = lotRangeCt(lot);
-  const entries = ledger.filter(e => !e.excluded && e.afterCt > range.start);
+  const entries = ledger.filter(e => {
+    if (e.excluded || e.afterCt <= range.start) return false;
+
+    // Skip shifts after lot's expiration date
+    if (lot.expirationDate) {
+      const shiftDate = parseLocalDate(e.shift.date);
+      const expirationD = parseLocalDate(lot.expirationDate);
+      if (shiftDate > expirationD) return false;
+    }
+
+    return true;
+  });
+
   if (entries.length === 0) return 0;
   const lastEntry = entries[entries.length - 1];
   return Math.min(lastEntry.afterCt, range.end) - range.start;
 }
 
+function getLotTonnageFromShifts(lot, state, today = new Date()) {
+  // Calculate actual tonnage allocated to this lot from all shifts (including RENEWAL allocations)
+  const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+  const sortedShifts = sortShifts(state.shifts);
+  let total = 0;
+
+  let mixTotalBefore = 0;
+  sortedShifts.forEach(shift => {
+    if (normMix(shift.mix) !== lot.mixKey || shift.bridge) return;
+
+    const splits = splitShiftAcrossLots(mixTotalBefore, mixTotalBefore + toCt(shift.tonsCt), lotsForMix, shift.date, today);
+    const allocation = splits.find(s => s.lotNo === lot.lotNo);
+    if (allocation) {
+      total += allocation.ct;
+    }
+    mixTotalBefore += toCt(shift.tonsCt);
+  });
+
+  return total;
+}
+
 function isSampleInRange(lot, n, tonCt) {
-  const range = sublotRangeCt(lot, n);
-  return tonCt >= range.start && tonCt <= range.end;
+  // Samples are now relative (0-3500), so check against relative sublot range
+  const subStart = toCt((n - 1) * SUBLOT_TONS);
+  const subEnd = toCt(n * SUBLOT_TONS);
+  return tonCt >= subStart && tonCt <= subEnd;
 }
 
 // ============================================================================
 // SAMPLE GENERATION
 // ============================================================================
-function generateSampleTons(lot, ledger, rng = Math.random) {
+function generateSampleTons(lot, state, rng = Math.random, today = new Date()) {
   const samples = [];
-  // For now, generate samples for all 7 sublots (full lot assumption)
-  // User must click Regenerate after tonnage stabilizes
-  const sublotsFilled = SUBLOTS_PER_LOT;
+  const lotTonnage = getLotTonnageFromShifts(lot, state, today);
 
-  // Only generate samples for sublots that will receive tonnage
-  for (let n = 1; n <= sublotsFilled; n++) {
-    const range = sublotRangeCt(lot, n);
-    const minTons = range.start / 100;
-    const maxTons = range.end / 100 - 0.01;
-    const tons = Math.floor(randInt(minTons * 100, maxTons * 100, rng) / 100);
-    samples.push({ tonCt: tons * 100, taken: false });
-  }
+  // Generate samples RELATIVE to lot start (0-3500), not absolute
+  for (let n = 1; n <= SUBLOTS_PER_LOT; n++) {
+    const relStart = toCt((n - 1) * SUBLOT_TONS);  // 0, 50000, 100000, ...
+    const relEnd = toCt(n * SUBLOT_TONS);           // 50000, 100000, 150000, ...
 
-  // Fill remaining sublots with null (not generated)
-  for (let n = sublotsFilled + 1; n <= SUBLOTS_PER_LOT; n++) {
-    samples.push({ tonCt: null, taken: false });
+    // Don't generate sample if sublot is beyond actual lot tonnage
+    if (relStart >= lotTonnage) {
+      samples.push({ tonCt: null, taken: false });
+      continue;
+    }
+
+    // Generate sample within sublot range, but capped at actual tonnage
+    const minTons = relStart / 100;
+    const maxTons = Math.min(relEnd / 100 - 0.01, lotTonnage / 100);
+
+    if (maxTons <= minTons) {
+      samples.push({ tonCt: null, taken: false });
+    } else {
+      const tons = Math.floor(randInt(minTons * 100, maxTons * 100, rng) / 100);
+      samples.push({ tonCt: tons * 100, taken: false });
+    }
   }
 
   return samples;
@@ -599,23 +641,26 @@ function derive(state, today = new Date()) {
   reconcileLots(state, ledgers, today);
 
   state.lots.forEach(lot => {
-    const key = normMix(lot.mix);
-    const ledger = ledgers[key] || [];
-    const lotTonnage = getLotTonnageFromLedger(lot, ledger);
-    const lotRange = lotRangeCt(lot);
+    const lotTonnage = getLotTonnageFromShifts(lot, state, today);
 
     for (let n = 1; n <= SUBLOTS_PER_LOT; n++) {
-      const absStart = lotRange.start + (n - 1) * toCt(SUBLOT_TONS);
-      const absEnd = lotRange.start + n * toCt(SUBLOT_TONS);
+      // Use RELATIVE ranges (0-3500), not absolute
+      const relStart = toCt((n - 1) * SUBLOT_TONS);
+      const relEnd = toCt(n * SUBLOT_TONS);
       const sample = lot.samples[n - 1];
 
-      if (absStart >= lotRange.start + lotTonnage) {
+      // Auto-fill missing samples if lot has actual tonnage, clear if zero
+      if (lotTonnage === 0) {
         if (sample && sample.tonCt !== null) lot.samples[n - 1] = { tonCt: null, taken: false };
-      } else if (!sample || sample.tonCt === null) {
-        const minTons = absStart / 100;
-        const maxTons = Math.min(absEnd / 100 - 0.01, (lotRange.start + lotTonnage) / 100);
-        const tons = Math.floor(randInt(minTons * 100, maxTons * 100, Math.random) / 100);
-        lot.samples[n - 1] = { tonCt: tons * 100, taken: false };
+      } else {
+        if (relStart >= lotTonnage) {
+          if (sample && sample.tonCt !== null) lot.samples[n - 1] = { tonCt: null, taken: false };
+        } else if (!sample || sample.tonCt === null) {
+          const minTons = relStart / 100;
+          const maxTons = Math.min(relEnd / 100 - 0.01, lotTonnage / 100);
+          const tons = Math.floor(randInt(minTons * 100, maxTons * 100, Math.random) / 100);
+          lot.samples[n - 1] = { tonCt: tons * 100, taken: false };
+        }
       }
     }
   });
@@ -692,8 +737,8 @@ function derive(state, today = new Date()) {
       let status = 'Pending';
 
       if (sample.tonCt !== null) {
-        const relativeTonCt = sample.tonCt - lotRange.start;
-        sampleDate = findSampleDate(lotLedger, relativeTonCt, lot);
+        // Samples are now stored as RELATIVE values (0-3500), not absolute
+        sampleDate = findSampleDate(lotLedger, sample.tonCt, lot);
         status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
       }
 
@@ -746,14 +791,61 @@ function derive(state, today = new Date()) {
 // ============================================================================
 let state = null;
 
+const STATE_SCHEMA = {
+  version: 1,
+  settings: { startLotNo: 100 },
+  nextSeq: 100,
+  nextLotNo: 100,
+  shifts: [],
+  lots: [],
+  ui: { sortMode: 'date', filterLot: '', filterMix: '', hideEmpty: false }
+};
+
+function migrateState(loaded) {
+  if (!loaded || typeof loaded !== 'object') return null;
+  const migrated = { ...STATE_SCHEMA, ...loaded };
+  migrated.settings = { ...STATE_SCHEMA.settings, ...(loaded.settings || {}) };
+  migrated.ui = { ...STATE_SCHEMA.ui, ...(loaded.ui || {}) };
+  if (!Array.isArray(migrated.shifts)) migrated.shifts = [];
+  if (!Array.isArray(migrated.lots)) migrated.lots = [];
+
+  // Migrate samples from absolute to relative ranges
+  migrated.lots.forEach(lot => {
+    const lotRange = lotRangeCt(lot);
+    if (lot.samples && Array.isArray(lot.samples)) {
+      lot.samples = lot.samples.map(sample => {
+        if (sample && sample.tonCt !== null && sample.tonCt >= lotRange.start) {
+          // Convert from absolute to relative (subtract lot range start)
+          return { ...sample, tonCt: sample.tonCt - lotRange.start };
+        }
+        return sample;
+      });
+    }
+  });
+
+  return migrated;
+}
+
 function loadState() {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    if (data) return JSON.parse(data);
+    if (!data) return null;
+
+    const loaded = JSON.parse(data);
+    const migrated = migrateState(loaded);
+
+    if (!migrated) {
+      showBanner('Corrupted save data, starting fresh', 'error');
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return migrated;
   } catch (e) {
     showBanner('Error loading saved data: ' + e.message, 'error');
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
   }
-  return null;
 }
 
 function saveState() {
@@ -802,19 +894,28 @@ function deleteShift(id) {
   commit();
 }
 
+function getNextLotNo() {
+  const maxLotNo = state.lots.length > 0
+    ? Math.max(...state.lots.map(l => l.lotNo))
+    : state.settings.startLotNo - 1;
+  return maxLotNo + 1;
+}
+
 function createLot(mix, lotNo) {
   const key = normMix(mix);
   const lotsForMix = state.lots.filter(l => l.mixKey === key);
   const maxIndex = lotsForMix.length > 0 ? Math.max(...lotsForMix.map(l => l.index)) : -1;
 
-  const nextLotNo = lotNo || (state.nextLotNo === undefined ? state.settings.startLotNo + state.lots.length : state.nextLotNo);
+  const nextLotNo = lotNo || getNextLotNo();
+  const createdDate = fmtLocalDate(new Date());
   const newLot = {
     lotNo: nextLotNo,
     mix,
     mixKey: key,
     index: maxIndex + 1,
     createdBy: 'manual',
-    createdDate: fmtLocalDate(new Date()),
+    createdDate,
+    expirationDate: addDays(createdDate, WINDOW_DAYS),
     samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
   };
   if (!lotNo) state.nextLotNo = nextLotNo + 1;
@@ -845,11 +946,9 @@ function generateSamples(lotNo, seed = null) {
   }
 
   const rng = seed !== null ? mulberry32(seed) : Math.random;
-  const ledgers = computeMixLedgers(state);
-  const ledger = ledgers[lot.mixKey] || [];
-  console.log(`ledger for ${lot.mixKey}: ${ledger.length} entries`);
-
-  const samples = generateSampleTons(lot, ledger, rng);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const samples = generateSampleTons(lot, state, rng, today);
   console.log(`generated ${samples.length} samples:`, samples.map(s => s.tonCt));
   console.log(`BEFORE: lot.samples=`, lot.samples.map(s => s.tonCt));
 
@@ -859,6 +958,7 @@ function generateSamples(lotNo, seed = null) {
   commit();
   const lotAfterCommit = state.lots.find(l => l.lotNo === lotNo);
   console.log(`AFTER commit: lotAfterCommit.samples=`, lotAfterCommit?.samples.map(s => s.tonCt));
+  render();
 }
 
 function regenerateSamples(lotNo, seed = null) {
@@ -866,12 +966,13 @@ function regenerateSamples(lotNo, seed = null) {
   if (!lot) return;
 
   const rng = seed !== null ? mulberry32(seed) : Math.random;
-  const ledgers = computeMixLedgers(state);
-  const ledger = ledgers[lot.mixKey] || [];
-  const samples = generateSampleTons(lot, ledger, rng);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const samples = generateSampleTons(lot, state, rng, today);
 
   lot.samples = samples;
   commit();
+  render();
 }
 
 function deleteLot(lotNo) {
@@ -1270,7 +1371,7 @@ function loadExampleData() {
         createdBy: 'auto',
         createdDate: '2026-07-20',
         samples: [
-          { tonCt: toCt(3750), taken: false },
+          { tonCt: toCt(250), taken: false },
           { tonCt: null, taken: false },
           { tonCt: null, taken: false },
           { tonCt: null, taken: false },
