@@ -471,11 +471,11 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   const lotsToUse = activeLotsIndices.size > 0 ? activeLotsIndices : null;
   console.log(`Using filter: ${lotsToUse ? 'non-expired only' : 'all lots (fallback)'}`);
 
-  // Second pass: allocate ALL remaining tonnage to the FIRST active (non-expired) lot
+  // Second pass: allocate shift tonnage respecting lot boundaries
   const result = [];
-  let remaining = afterCt - beforeCt;
 
   sorted.forEach(lot => {
+    const lotRange = lotRangeCt(lot);
     console.log(`\n  Processing Lot ${lot.lotNo}:`);
 
     // Skip expired lots entirely
@@ -484,18 +484,20 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
       return;
     }
 
-    // Allocate ALL remaining tonnage to the first active lot
-    if (remaining > 0) {
-      console.log(`    ✓ ACTIVE LOT - allocating ALL remaining ${remaining/100}t to Lot ${lot.lotNo}`);
-      result.push({ lotNo: lot.lotNo, ct: remaining });
-      remaining = 0;
-      return; // Stop after filling first active lot
+    // Calculate intersection of shift range [beforeCt, afterCt) with this lot's range
+    const allocStart = Math.max(beforeCt, lotRange.start);
+    const allocEnd = Math.min(afterCt, lotRange.end);
+
+    if (allocEnd > allocStart) {
+      const allocation = allocEnd - allocStart;
+      console.log(`    ✓ ACTIVE LOT - allocating ${allocation/100}t to Lot ${lot.lotNo}`);
+      result.push({ lotNo: lot.lotNo, ct: allocation });
+    } else if (beforeCt >= lotRange.end) {
+      console.log(`    SKIP: Lot's range already passed`);
+    } else {
+      console.log(`    SKIP: Shift hasn't reached this lot's range yet`);
     }
   });
-
-  if (remaining > 0) {
-    console.log(`\n⚠ WARNING: ${remaining/100}t unallocated (no active lots)`);
-  }
 
   console.log(`\nFinal result: ${result.length} lots, splits:`, result.map(r => `Lot${r.lotNo}:${r.ct/100}t`).join(', '));
   return result;
