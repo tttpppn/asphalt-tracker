@@ -1217,10 +1217,10 @@ function renderShiftTable(derived) {
 }
 
 function renderAnnualSummary(derived) {
-  const tbody = document.querySelector('#annualSummaryTable tbody');
-  if (!tbody) return;
-
-  tbody.innerHTML = '';
+  const table = document.querySelector('#annualSummaryTable');
+  const thead = table.querySelector('thead');
+  const tbody = table.querySelector('tbody');
+  if (!tbody || !thead) return;
 
   // Calculate totals by year and mix
   const totals = {}; // { year: { mix: tonnage } }
@@ -1234,12 +1234,25 @@ function renderAnnualSummary(derived) {
     totals[year][mix] = (totals[year][mix] || 0) + shift.tonsCt;
   });
 
-  // Get all unique mixes
+  // Get all unique mixes and their display names
   const allMixes = [...new Set(state.shifts.filter(s => !s.bridge).map(s => normMix(s.mix)))].sort();
+  const mixNames = {};
+  state.shifts.forEach(s => {
+    if (!s.bridge) mixNames[normMix(s.mix)] = s.mix;
+  });
 
-  // Render rows for each year
+  // Update header with mix names
+  let headerHtml = '<tr><th>Year</th>';
+  allMixes.forEach(mix => {
+    headerHtml += `<th>${mixNames[mix] || mix}</th>`;
+  });
+  headerHtml += '</tr>';
+  thead.innerHTML = headerHtml;
+
+  // Render data rows for each year
+  tbody.innerHTML = '';
   Object.keys(totals).sort().forEach(year => {
-    let row = `<tr><td>${year}</td>`;
+    let row = `<tr><td><strong>${year}</strong></td>`;
     allMixes.forEach(mix => {
       const tons = totals[year][mix] || 0;
       row += `<td>${fmtTons(toCt(tons))}</td>`;
