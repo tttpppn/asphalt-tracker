@@ -170,6 +170,19 @@
         <tbody></tbody>
       </table>
     </section>
+
+    <h2>Annual Summary</h2>
+    <table id="annualSummaryTable">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th id="annualMix1"></th>
+          <th id="annualMix2"></th>
+          <th id="annualMix3"></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
   <div class="controls">
@@ -1040,6 +1053,7 @@ function render() {
   renderSummary(derived);
   renderSamplingTable(derived);
   renderShiftTable(derived);
+  renderAnnualSummary(derived);
   updateMixList();
   updateLotInfo();
 }
@@ -1199,6 +1213,39 @@ function renderShiftTable(derived) {
         <button class="danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="if (confirm('Delete this shift?')) deleteShift('${shift.id}')">Delete</button>
       </td>
     </tr>${splitNote ? '<tr><td colspan="6">' + splitNote + '</td></tr>' : ''}`;
+  });
+}
+
+function renderAnnualSummary(derived) {
+  const tbody = document.querySelector('#annualSummaryTable tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  // Calculate totals by year and mix
+  const totals = {}; // { year: { mix: tonnage } }
+
+  state.shifts.forEach(shift => {
+    if (shift.bridge) return;
+    const year = shift.date.split('-')[0];
+    const mix = normMix(shift.mix);
+
+    if (!totals[year]) totals[year] = {};
+    totals[year][mix] = (totals[year][mix] || 0) + shift.tonsCt;
+  });
+
+  // Get all unique mixes
+  const allMixes = [...new Set(state.shifts.filter(s => !s.bridge).map(s => normMix(s.mix)))].sort();
+
+  // Render rows for each year
+  Object.keys(totals).sort().forEach(year => {
+    let row = `<tr><td>${year}</td>`;
+    allMixes.forEach(mix => {
+      const tons = totals[year][mix] || 0;
+      row += `<td>${fmtTons(toCt(tons))}</td>`;
+    });
+    row += '</tr>';
+    tbody.innerHTML += row;
   });
 }
 
