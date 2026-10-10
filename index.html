@@ -478,19 +478,16 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
     const lotRange = lotRangeCt(lot);
     console.log(`\n  Processing Lot ${lot.lotNo}:`);
 
-    // Skip expired lots entirely
-    if (lotsToUse && !lotsToUse.has(lot.index)) {
-      console.log(`    SKIP: EXPIRED - cannot allocate to expired lots`);
-      return;
-    }
-
     // Calculate intersection of shift range [beforeCt, afterCt) with this lot's range
+    // Note: we allocate to expired lots too; expiration only blocks sampling, not tonnage
     const allocStart = Math.max(beforeCt, lotRange.start);
     const allocEnd = Math.min(afterCt, lotRange.end);
 
     if (allocEnd > allocStart) {
       const allocation = allocEnd - allocStart;
-      console.log(`    ✓ ACTIVE LOT - allocating ${allocation/100}t to Lot ${lot.lotNo}`);
+      const isExpired = lotsToUse && !lotsToUse.has(lot.index);
+      const status = isExpired ? 'EXPIRED (accepting tonnage only)' : 'ACTIVE';
+      console.log(`    ✓ ${status} - allocating ${allocation/100}t to Lot ${lot.lotNo}`);
       result.push({ lotNo: lot.lotNo, ct: allocation });
     } else if (beforeCt >= lotRange.end) {
       console.log(`    SKIP: Lot's range already passed`);
