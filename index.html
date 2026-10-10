@@ -592,7 +592,7 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
 function findSampleDate(ledger, sampleCt, lot) {
   for (const entry of ledger) {
     if (entry.excluded) continue;
-    
+
     // Skip shifts that come after the lot's expiration date
     if (lot && lot.createdDate) {
       const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
@@ -602,11 +602,32 @@ function findSampleDate(ledger, sampleCt, lot) {
         continue; // Skip this shift, lot has expired
       }
     }
-    
+
     if (entry.afterCt >= sampleCt) {
       return entry.shift.date;
     }
   }
+
+  // If not found in ledger (e.g., RENEWAL allocations), find from shifts directly
+  if (lot) {
+    const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+    const sortedShifts = sortShifts(state.shifts);
+    let cumulativeCt = 0;
+
+    for (const shift of sortedShifts) {
+      if (normMix(shift.mix) !== lot.mixKey || shift.bridge) continue;
+
+      const splits = splitShiftAcrossLots(cumulativeCt, cumulativeCt + toCt(shift.tonsCt), lotsForMix, shift.date);
+      const allocation = splits.find(s => s.lotNo === lot.lotNo);
+
+      if (allocation && cumulativeCt + allocation.ct >= sampleCt) {
+        return shift.date;
+      }
+
+      cumulativeCt += toCt(shift.tonsCt);
+    }
+  }
+
   return null;
 }
 
