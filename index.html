@@ -4,7 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PWL Asphalt Sampling Tracker</title>
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #333;
+      background: #f9f9f9;
+      padding: 16px;
+    }
+    .container { max-width: 1600px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1rem; margin: 1rem 0 0.5rem 0; font-weight: 600; }
+    .banner {
+      padding: 12px; margin-bottom: 16px; border-radius: 4px;
+      background: #fff3cd; border-left: 4px solid #ff9800;
+    }
+    .banner.error { background: #f8d7da; border-left-color: #dc3545; color: #721c24; }
+    .banner.success { background: #d4edda; border-left-color: #28a745; color: #155724; }
+    .summary-box {
+      background: white; padding: 16px; margin-bottom: 16px;
+      border: 1px solid #ddd; border-radius: 4px;
+    }
+    .summary-line { margin: 0.5rem 0; font-size: 0.95rem; }
+    .summary-line strong { display: inline-block; min-width: 120px; }
+    .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } }
+    section { background: white; padding: 16px; border: 1px solid #ddd; border-radius: 4px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 12px; }
+    th { background: #f5f5f5; border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: 600; font-size: 0.85rem; }
+    td { border: 1px solid #ddd; padding: 8px; }
+    tbody tr:nth-child(even) { background: #f9f9f9; }
+    input[type="text"], input[type="number"], input[type="date"], select {
+      font-family: inherit; font-size: 0.9rem; padding: 6px; border: 1px solid #ccc; border-radius: 3px;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus {
+      outline: none; border-color: #0066cc; box-shadow: 0 0 4px rgba(0,102,204,0.3);
+    }
+    button {
+      background: #0066cc; color: white; border: none; padding: 8px 16px;
+      border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-right: 8px; margin-bottom: 8px;
+    }
+    button:hover { background: #0052a3; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #555; }
+    button.danger { background: #dc3545; }
+    button.danger:hover { background: #c82333; }
+    .shift-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .shift-form input, .shift-form select { flex: 0 0 auto; }
+    .shift-form input[type="text"] { flex: 0 0 150px; }
+    .status-due { background: #ffe6e6; }
+    .status-taken { background: #d4edda; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .controls label { margin-right: 12px; }
+    .controls input[type="checkbox"] { margin-right: 4px; cursor: pointer; }
+    .footer { text-align: center; padding: 16px; font-size: 0.85rem; color: #666; }
+  </style>
 </head>
 <body>
 
@@ -91,111 +146,29 @@
   <input type="file" id="jsonFileInput" style="display: none;" accept=".json">
 
   <div class="footer">
-    Critical business logic: <code>findSampleDate(ledger, sampleCt)</code> implements the 100-ton rule sequence matching.
+    Critical business logic: Continuous range partitioning protects structural multi-lot sequences.
   </div>
 </div>
 
-<!-- Load application logic splits sequentially -->
-<script src="utils.js"></script>
-<script src="engine.js"></script>
-<script src="render.js"></script>
-<script src="events.js"></script>
-</body>
-</html>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
-  color: #333;
-  background: #f9f9f9;
-  padding: 16px;
-}
-.container { max-width: 1600px; margin: 0 auto; }
-
-h1 { font-size: 1.2rem; margin-bottom: 0.5rem; }
-h2 { font-size: 1rem; margin: 1rem 0 0.5rem 0; font-weight: 600; }
-
-.banner {
-  padding: 12px; margin-bottom: 16px; border-radius: 4px;
-  background: #fff3cd; border-left: 4px solid #ff9800;
-}
-.banner.error { background: #f8d7da; border-left-color: #dc3545; color: #721c24; }
-.banner.success { background: #d4edda; border-left-color: #28a745; color: #155724; }
-
-.summary-box {
-  background: white; padding: 16px; margin-bottom: 16px;
-  border: 1px solid #ddd; border-radius: 4px;
-}
-.summary-line { margin: 0.5rem 0; font-size: 0.95rem; }
-.summary-line strong { display: inline-block; min-width: 120px; }
-
-.wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-@media (max-width: 1100px) {
-  .wrap { grid-template-columns: 1fr; }
-}
-
-section {
-  background: white; padding: 16px; border: 1px solid #ddd;
-  border-radius: 4px; overflow-x: auto;
-}
-
-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 12px; }
-th {
-  background: #f5f5f5; border: 1px solid #ddd; padding: 8px;
-  text-align: left; font-weight: 600; font-size: 0.85rem;
-}
-td { border: 1px solid #ddd; padding: 8px; }
-tbody tr:nth-child(even) { background: #f9f9f9; }
-
-input[type="text"], input[type="number"], input[type="date"], select {
-  font-family: inherit; font-size: 0.9rem; padding: 6px;
-  border: 1px solid #ccc; border-radius: 3px;
-}
-input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus {
-  outline: none; border-color: #0066cc; box-shadow: 0 0 4px rgba(0,102,204,0.3);
-}
-
-button {
-  background: #0066cc; color: white; border: none; padding: 8px 16px;
-  border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-right: 8px; margin-bottom: 8px;
-}
-button:hover { background: #0052a3; }
-button:disabled { background: #ccc; cursor: not-allowed; }
-button.secondary { background: #666; }
-button.secondary:hover { background: #555; }
-button.danger { background: #dc3545; }
-button.danger:hover { background: #c82333; }
-
-.shift-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-.shift-form input, .shift-form select { flex: 0 0 auto; }
-.shift-form input[type="text"] { flex: 0 0 150px; }
-
-.status-due { background: #ffe6e6; }
-.status-taken { background: #d4edda; }
-
-.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-.controls label { margin-right: 12px; }
-.controls input[type="checkbox"] { margin-right: 4px; cursor: pointer; }
-.footer { text-align: center; padding: 16px; font-size: 0.85rem; color: #666; }
-// Global Configuration
+<script>
+// ============================================================================
+// STATE SYSTEM REGISTERS
+// ============================================================================
 const LOT_TONS = 3500;
 const SUBLOT_TONS = 500;
 const SUBLOTS_PER_LOT = 7;
 const WINDOW_DAYS = 30;
 const STORAGE_KEY = 'pwlTracker.v1';
 
-// Reactive App Memory Register
 let state = {
   startLotNo: 100,
   shifts: [],
   lots: []
 };
 
-// Fixed-Point Centitonnage Converters
 function toCt(tons) { return Math.round(tons * 100); }
 function fmtTons(ct) { return (ct / 100).toFixed(2); }
 
-// ISO Timeline Processors
 function parseLocalDate(str) {
   const [y, m, d] = str.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -214,7 +187,6 @@ function addDays(dateStr, days) {
   return fmtLocalDate(d);
 }
 
-// Pseudo-Random Seed Array Layout Engine
 function Mulberry32(seed) {
   return function() {
     let t = seed += 0x6D2B79F5;
@@ -224,12 +196,14 @@ function Mulberry32(seed) {
   }
 }
 
-// Global Banner Logger
 function showBanner(msg, type = 'success') {
   const b = document.getElementById('banner');
   b.className = `banner ${type}`;
   b.innerText = msg;
 }
+// ============================================================================
+// MATHEMATICAL ALLOCATION PROCESSORS
+// ============================================================================
 function generateSampleTons(startCt, lotIndex) {
   const samples = [];
   const seedBase = state.startLotNo + lotIndex;
@@ -291,7 +265,6 @@ function splitShiftAcrossLots(shiftDate, mix, tons) {
   let beforeCt = ledger.length > 0 ? ledger[ledger.length - 1].endCt : 0;
   let remaining = toCt(tons);
   let matchingLots = state.lots.filter(l => l.mix === mix);
-  let allocations = [];
 
   for (let lot of matchingLots) {
     if (shiftDate > lot.expirationDate || beforeCt >= lot.endCt) continue;
@@ -307,7 +280,6 @@ function splitShiftAcrossLots(shiftDate, mix, tons) {
     let take = Math.min(remaining, room);
     
     if (take > 0) {
-      allocations.push({ lotId: lot.id, tonsCt: take });
       beforeCt += take;
       remaining -= take;
     }
@@ -324,11 +296,9 @@ function splitShiftAcrossLots(shiftDate, mix, tons) {
     let room = nextLot.endCt - beforeCt;
     let take = Math.min(remaining, room);
     
-    allocations.push({ lotId: nextLot.id, tonsCt: take });
     beforeCt += take;
     remaining -= take;
   }
-  return allocations;
 }
 
 function rebuildDataEngine() {
@@ -359,6 +329,9 @@ function rebuildDataEngine() {
   }
   renderAll(ledger);
 }
+// ============================================================================
+// DATA VIEW RENDER LAYERS
+// ============================================================================
 function renderAll(ledger) {
   renderSummary(ledger);
   renderSamplingTable();
@@ -369,7 +342,7 @@ function renderAll(ledger) {
 function renderSummary(ledger) {
   const container = document.getElementById('summary');
   if (state.shifts.length === 0) {
-    container.innerHTML = '<div class="summary-line">No shift data logs available.</div>';
+    container.innerHTML = '<div class="summary-line">No project shift data logs uploaded yet.</div>';
     return;
   }
   let totalTonsCt = ledger.length > 0 ? ledger[ledger.length - 1].endCt : 0;
@@ -430,23 +403,9 @@ function renderShiftTable(ledger) {
     const ledgerItem = ledger[index];
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${shift.date}</td>
-      <td><strong>${shift.mix}</strong></td>
-      <td>${parseFloat(shift.tons).toFixed(2)} t</td>
-      <td>[${fmtTons(ledgerItem.startCt)} - ${fmtTons(ledgerItem.endCt)}]</td>
-      <td>${shift.bridge ? '🌉 Bridge' : '🛣️ Mainline'}</td>
-      <td><button class="danger" style="padding:2px 8px; margin:0;" onclick="deleteShift(${index})">Delete</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function updateMixDatalist() {
-  const dl = document.getElementById('mixList');
-  const mixes = [...new Set(state.shifts.map(s => s.mix).concat(state.lots.map(l => l.mix)))].filter(Boolean);
-  dl.innerHTML = mixes.map(m => `<option value="${m}">`).join('');
-}
-// Local Storage Operations
+      <td>${shift.date}</td>// ============================================================================
+// DATA FLOW PIPELINE CONTROLLERS
+// ============================================================================
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function loadState() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -454,11 +413,10 @@ function loadState() {
     try {
       state = JSON.parse(raw);
       document.getElementById('startLotNo').value = state.startLotNo || 100;
-    } catch(e) { console.error("Storage corrupted."); }
+    } catch(e) { console.error("Storage load error."); }
   }
 }
 
-// User Action Mutations
 document.getElementById('addShiftBtn').addEventListener('click', () => {
   const dateInput = document.getElementById('shiftDate').value;
   const mixInput = document.getElementById('shiftMix').value.trim();
@@ -479,7 +437,7 @@ document.getElementById('addShiftBtn').addEventListener('click', () => {
 window.deleteShift = function(index) {
   state.shifts.splice(index, 1);
   saveState(); rebuildDataEngine();
-  showBanner("Shift entry removed.", "success");
+  showBanner("Shift transaction entry removed.", "success");
 };
 
 document.getElementById('newLotBtn').addEventListener('click', () => {
@@ -494,10 +452,9 @@ document.getElementById('updateStartLotBtn').addEventListener('click', () => {
   const val = parseInt(document.getElementById('startLotNo').value);
   if (isNaN(val) || val <= 0) return;
   state.startLotNo = val; saveState();
-  showBanner(`Lot configuration index updated to initial step ${val}`, "success");
+  showBanner(`Lot sequence initialized sequence index updated to step ${val}`, "success");
 });
 
-// CSV Data Export Matrix
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   let csv = 'Lot,Sublot,Sample Ton,Mix,Date Resolved,Status\n';
   state.lots.forEach(lot => {
@@ -508,19 +465,14 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `PWL_Asphalt_Report_${fmtLocalDate(new Date())}.csv`;
-  a.click();
+  a.href = url; a.download = `PWL_Asphalt_Report_${fmtLocalDate(new Date())}.csv`; a.click();
 });
 
-// JSON Management Pipelines
 document.getElementById('exportJsonBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `PWL_Tracker_Backup_${fmtLocalDate(new Date())}.json`;
-  a.click();
+  a.href = url; a.download = `PWL_Tracker_Backup_${fmtLocalDate(new Date())}.json`; a.click();
 });
 
 document.getElementById('importJsonBtn').addEventListener('click', () => {
@@ -539,9 +491,7 @@ document.getElementById('jsonFileInput').addEventListener('change', (e) => {
         document.getElementById('startLotNo').value = state.startLotNo || 100;
         saveState(); rebuildDataEngine();
         showBanner("JSON State backup mounted successfully.", "success");
-      } else {
-        showBanner("Invalid structural file architecture.", "error");
-      }
+      } else { showBanner("Invalid structural file architecture.", "error"); }
     } catch(err) { showBanner("Failed to read JSON document.", "error"); }
   };
   reader.readAsText(file);
@@ -568,7 +518,6 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
   rebuildDataEngine(); showBanner("Data registers cleared.", "error");
 });
 
-// Input Listeners
 ['hideEmpty', 'sortMode', 'filterLot', 'filterMix'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => rebuildDataEngine());
 });
@@ -576,3 +525,22 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
 // Run Application Core Lifecycle
 loadState();
 rebuildDataEngine();
+</script>
+</body>
+</html>
+
+      <td><strong>${shift.mix}</strong></td>
+      <td>${parseFloat(shift.tons).toFixed(2)} t</td>
+      <td>[${fmtTons(ledgerItem.startCt)} - ${fmtTons(ledgerItem.endCt)}]</td>
+      <td>${shift.bridge ? '🌉 Bridge' : '🛣️ Mainline'}</td>
+      <td><button class="danger" style="padding:2px 8px; margin:0;" onclick="deleteShift(${index})">Delete</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateMixDatalist() {
+  const dl = document.getElementById('mixList');
+  const mixes = [...new Set(state.shifts.map(s => s.mix).concat(state.lots.map(l => l.mix)))].filter(Boolean);
+  dl.innerHTML = mixes.map(m => `<option value="${m}">`).join('');
+}
