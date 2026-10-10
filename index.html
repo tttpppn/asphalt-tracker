@@ -471,16 +471,21 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   const lotsToUse = activeLotsIndices.size > 0 ? activeLotsIndices : null;
   console.log(`Using filter: ${lotsToUse ? 'non-expired only' : 'all lots (fallback)'}`);
 
-  // Second pass: allocate shift tonnage respecting lot boundaries
+  // Second pass: allocate shift tonnage, skipping expired lots
+  // If a lot expires, allocate its remaining tonnage to the next active lot
   const result = [];
+  let remaining = afterCt - beforeCt;
 
   sorted.forEach(lot => {
+    if (remaining <= 0) return;
+
     const lotRange = lotRangeCt(lot);
     console.log(`\n  Processing Lot ${lot.lotNo}:`);
 
-    // Skip expired lots entirely (no tonnage, no samples)
-    if (lotsToUse && !lotsToUse.has(lot.index)) {
-      console.log(`    SKIP: EXPIRED - cannot allocate tonnage to expired lots`);
+    // Check if expired
+    const isExpired = lotsToUse && !lotsToUse.has(lot.index);
+    if (isExpired) {
+      console.log(`    SKIP: EXPIRED - closed to new tonnage`);
       return;
     }
 
@@ -492,12 +497,48 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
       const allocation = allocEnd - allocStart;
       console.log(`    ✓ ACTIVE LOT - allocating ${allocation/100}t to Lot ${lot.lotNo}`);
       result.push({ lotNo: lot.lotNo, ct: allocation });
+      remaining -= allocation;
     } else if (beforeCt >= lotRange.end) {
-      console.log(`    SKIP: Lot's range already passed`);
+      console.log(`    SKIP: beyond this lot's range`);
     } else {
-      console.log(`    SKIP: Shift hasn't reached this lot's range yet`);
+      console.log(`    SKIP: not yet in this lot's range`);
     }
   });
+
+  // Fallback: if tonnage remains after checking all lots,
+  // find which lot should have received it and allocate to next active lot
+  if (remaining > 0 && lotsToUse && lotsToUse.size > 0) {
+    // Determine which lot's range the remaining tonnage should occupy
+    const shiftRangeStart = beforeCt + ((afterCt - beforeCt) - remaining);
+    let targetLotForRemainder = null;
+
+    for (const lot of sorted) {
+      const lotRange = lotRangeCt(lot);
+      if (shiftRangeStart < lotRange.end) {
+        targetLotForRemainder = lot;
+        break;
+      }
+    }
+
+    // If target lot is expired, allocate to next non-expired lot instead
+    if (targetLotForRemainder) {
+      const isTargetExpired = lotsToUse && !lotsToUse.has(targetLotForRemainder.index);
+      const finalLot = isTargetExpired
+        ? sorted.find(l => l.index > targetLotForRemainder.index && lotsToUse.has(l.index))
+        : (lotsToUse.has(targetLotForRemainder.index) ? targetLotForRemainder : null);
+
+      if (finalLot && !result.find(r => r.lotNo === finalLot.lotNo)) {
+        const action = isTargetExpired ? 'RENEWAL (expired lot → next active)' : 'ACTIVE LOT';
+        console.log(`\n  ${action}: Allocating remaining ${remaining/100}t to Lot ${finalLot.lotNo}`);
+        result.push({ lotNo: finalLot.lotNo, ct: remaining });
+        remaining = 0;
+      }
+    }
+  }
+
+  if (remaining > 0) {
+    console.log(`\n⚠ WARNING: ${remaining/100}t unallocated (no active lots available)`);
+  }
 
   console.log(`\nFinal result: ${result.length} lots, splits:`, result.map(r => `Lot${r.lotNo}:${r.ct/100}t`).join(', '));
   return result;
