@@ -97,7 +97,6 @@
       border-radius: 3px; margin-bottom: 8px; font-size: 0.85rem;
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm"></script>
 </head>
 <body>
 
@@ -214,21 +213,6 @@ const SUBLOT_TONS = 500;
 const SUBLOTS_PER_LOT = 7;
 const WINDOW_DAYS = 30;
 const STORAGE_KEY = 'pwlTracker.v1';
-
-// ============================================================================
-// SUPABASE CONFIG (Phase 1)
-// ============================================================================
-const BACKEND = 'local'; // 'local' or 'supabase' — feature flag for Phase 1-6
-const SUPABASE_URL = 'https://vybyqhezartloqotaxrf.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_oy6Etr20SZ5xwgsjaARYVA_Wc2ciHSe';
-let supabaseClient = null;
-
-// Initialize Supabase client
-function initSupabase() {
-  if (typeof window.supabase !== 'undefined' && BACKEND === 'supabase') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-}
 
 // ============================================================================
 // UTILITIES
@@ -839,88 +823,6 @@ function derive(state, today = new Date()) {
 }
 
 // ============================================================================
-// PURE MAPPING FUNCTIONS (Phase 1 - Supabase integration)
-// ============================================================================
-// Convert Supabase rows to app state shape
-function rowsToState(shiftRows, lotRows, sampleRows, settingsRow) {
-  // Build shifts
-  const shifts = shiftRows.map(row => ({
-    id: row.id,
-    date: row.date,
-    mix: row.mix,
-    tonsCt: row.tons_ct ? parseFloat(row.tons_ct) : 0,
-    locations: row.locations || '',
-    bridge: !!row.bridge_deck,
-    seq: row.seq || 0
-  }));
-
-  // Build lots with samples
-  const lots = lotRows.map(lotRow => {
-    const lotSamples = sampleRows
-      .filter(s => s.lot_no === lotRow.lot_no)
-      .sort((a, b) => a.sublot_number - b.sublot_number)
-      .map(s => ({
-        tonCt: s.ton_ct !== null ? parseInt(s.ton_ct) : null,
-        taken: !!s.taken
-      }));
-
-    return {
-      lotNo: lotRow.lot_no,
-      mix: lotRow.mix,
-      mixKey: lotRow.mix_key,
-      index: lotRow.idx,
-      createdBy: lotRow.created_by,
-      createdDate: lotRow.created_date,
-      expirationDate: lotRow.expiration_date,
-      samples: lotSamples.length > 0 ? lotSamples : Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
-    };
-  });
-
-  // Get next sequence and lot number from settings
-  const nextSeq = settingsRow?.next_seq || 100;
-  const nextLotNo = settingsRow?.next_lot_no || 1;
-
-  return {
-    version: 1,
-    settings: {
-      startLotNo: settingsRow?.start_lot_no || 1
-    },
-    nextSeq,
-    nextLotNo,
-    shifts,
-    lots
-  };
-}
-
-// Fetch all data from Supabase
-async function fetchAll() {
-  if (!supabaseClient) return null;
-
-  try {
-    // Fetch all tables
-    const { data: shifts, error: shiftsErr } = await supabaseClient.from('shifts').select('*');
-    const { data: lots, error: lotsErr } = await supabaseClient.from('lots').select('*');
-    const { data: samples, error: samplesErr } = await supabaseClient.from('samples').select('*');
-    const { data: settings, error: settingsErr } = await supabaseClient.from('settings').select('*');
-
-    if (shiftsErr || lotsErr || samplesErr || settingsErr) {
-      throw new Error('Failed to fetch data from Supabase');
-    }
-
-    // Return raw rows for mapping
-    return {
-      shifts: shifts || [],
-      lots: lots || [],
-      samples: samples || [],
-      settings: settings && settings.length > 0 ? settings[0] : null
-    };
-  } catch (e) {
-    console.error('Fetch error:', e);
-    throw e;
-  }
-}
-
-// ============================================================================
 // STATE MANAGEMENT
 // ============================================================================
 let state = null;
@@ -960,30 +862,7 @@ function migrateState(loaded) {
   return migrated;
 }
 
-async function loadState() {
-  // Phase 1: Support branching on BACKEND flag
-  if (BACKEND === 'supabase') {
-    try {
-      const rows = await fetchAll();
-      if (!rows) {
-        showBanner('Supabase unavailable, using local data', 'error');
-        return loadStateLocal();
-      }
-
-      const mapped = rowsToState(rows.shifts, rows.lots, rows.samples, rows.settings);
-      const migrated = migrateState(mapped);
-      return migrated || null;
-    } catch (e) {
-      console.error('Supabase load error:', e);
-      showBanner('Failed to load from Supabase, falling back to local', 'error');
-      return loadStateLocal();
-    }
-  } else {
-    return loadStateLocal();
-  }
-}
-
-function loadStateLocal() {
+function loadState() {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return null;
@@ -1697,9 +1576,8 @@ function runSelfTest() {
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  initSupabase();
-  state = await loadState();
+document.addEventListener('DOMContentLoaded', () => {
+  state = loadState();
 
   if (!state) {
     loadExampleData();
