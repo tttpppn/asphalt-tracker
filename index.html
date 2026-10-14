@@ -663,11 +663,12 @@ function findSampleDate(ledger, sampleCt, lot, allocations) {
       if (alloc) {
         const allocation = alloc.splits.find(s => s.lotNo === lot.lotNo);
 
-        if (allocation && cumulativeCt + allocation.ct >= sampleCt) {
-          return shift.date;
+        if (allocation) {
+          if (cumulativeCt + allocation.ct >= sampleCt) {
+            return shift.date;
+          }
+          cumulativeCt += allocation.ct;
         }
-
-        cumulativeCt += allocation.ct;
       }
     }
   }
@@ -740,7 +741,7 @@ function derive(state, today = new Date()) {
   sortedShifts.forEach(shift => {
     const key = normMix(shift.mix);
     const alloc = allocations[shift.id];
-    const splits = alloc?.splits || [];
+    const splits = alloc && alloc.splits ? alloc.splits : [];
 
     if (shift.bridge) {
       shiftRows.push({
