@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Allocation Cache Test</title>
+</head>
+<body>
+    <h1>Allocation Cache Test</h1>
+    <div id="result"></div>
+    <script>
+        // Mock functions and constants needed for testing
+        const SUBLOT_TONS = 500;
+        const LOT_TONS = 3500;
+        const SUBLOTS_PER_LOT = 7;
+        const WINDOW_DAYS = 30;
+
+        function toCt(tons) {
+            return Math.round(tons * 100);
+        }
+
+        function parseLocalDate(dateStr) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function normMix(mix) {
+            return (mix || '').toUpperCase().trim();
+        }
+
+        function sortShifts(shifts) {
+            return [...shifts].sort((a, b) => {
+                const dA = parseLocalDate(a.date);
+                const dB = parseLocalDate(b.date);
+                if (+dA !== +dB) return +dA - +dB;
+                return a.seq - b.seq;
+            });
+        }
+
+        function lotRangeCt(lot) {
+            const start = toCt((lot.index - 1) * LOT_TONS);
+            const end = start + toCt(LOT_TONS);
+            return { start, end };
+        }
+
+        // Simplified splitShiftAcrossLots - just allocates to first lot
+        let splitCallCount = 0;
+        function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix) {
+            splitCallCount++;
+            const remaining = afterCt - beforeCt;
+            const result = [];
+
+            // Simple allocation: first lot gets it all if it has space
+            if (lotsForMix.length > 0) {
+                const lot = lotsForMix[0];
+                const lotRange = lotRangeCt(lot);
+                const allocStart = Math.max(beforeCt, lotRange.start);
+                const allocEnd = Math.min(afterCt, lotRange.end);
+
+                if (allocEnd > allocStart) {
+                    result.push({ lotNo: lot.lotNo, ct: allocEnd - allocStart });
+                }
+            }
+
+            return result;
+        }
+
+        // New caching function
+        function computeAllShiftAllocations(state) {
+            const sortedShifts = sortShifts(state.shifts);
+            const allocations = {};
+            const mixTotals = {};
+
+            sortedShifts.forEach(shift => {
+                const key = normMix(shift.mix);
+                const lotsForMix = state.lots.filter(l => l.mixKey === key);
+
+                const mixTotalBefore = mixTotals[key] || 0;
+                const mixTotalAfter = mixTotalBefore + toCt(shift.tonsCt);
+
+                const splits = shift.bridge ? [] : splitShiftAcrossLots(
+                    mixTotalBefore,
+                    mixTotalAfter,
+                    lotsForMix
+                );
+
+                allocations[shift.id] = { splits, mixTotalBefore, mixTotalAfter };
+                mixTotals[key] = mixTotalAfter;
+            });
+
+            return allocations;
+        }
+
+        // Old way (with duplicate calls)
+        function getLotTonnageFromShiftsOld(lot, state) {
+            const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+            const sortedShifts = sortShifts(state.shifts);
+            let total = 0;
+            let mixTotalBefore = 0;
+
+            sortedShifts.forEach(shift => {
+                if (normMix(shift.mix) !== lot.mixKey || shift.bridge) return;
+
+                const splits = splitShiftAcrossLots(mixTotalBefore, mixTotalBefore + toCt(shift.tonsCt), lotsForMix);
+                const allocation = splits.find(s => s.lotNo === lot.lotNo);
+                if (allocation) {
+                    total += allocation.ct;
+                }
+                mixTotalBefore += toCt(shift.tonsCt);
+            });
+
+            return total;
+        }
+
+        // New way (with caching)
+        function getLotTonnageFromShiftsNew(lot, state, allocations) {
+            const sortedShifts = sortShifts(state.shifts);
+            let total = 0;
+
+            sortedShifts.forEach(shift => {
+                if (normMix(shift.mix) !== lot.mixKey || shift.bridge) return;
+
+                const alloc = allocations[shift.id];
+                if (alloc) {
+                    const allocation = alloc.splits.find(s => s.lotNo === lot.lotNo);
+                    if (allocation) {
+                        total += allocation.ct;
+                    }
+                }
+            });
+
+            return total;
+        }
+
+        // Run test
+        const testState = {
+            shifts: [
+                { id: 'shift1', date: '2026-07-01', seq: 1, mix: 'A', tonsCt: 1000, bridge: false },
+                { id: 'shift2', date: '2026-07-05', seq: 1, mix: 'A', tonsCt: 1500, bridge: false },
+                { id: 'shift3', date: '2026-07-10', seq: 1, mix: 'A', tonsCt: 800, bridge: false }
+            ],
+            lots: [
+                { lotNo: 1, index: 1, mixKey: 'A', createdDate: '2026-06-30', samples: [] },
+                { lotNo: 2, index: 2, mixKey: 'A', createdDate: '2026-07-02', samples: [] },
+                { lotNo: 3, index: 3, mixKey: 'A', createdDate: '2026-07-08', samples: [] }
+            ]
+        };
+
+        const result = document.getElementById('result');
+
+        // Test 1: Old way (with duplicate calls)
+        splitCallCount = 0;
+        const lot1 = testState.lots[0];
+        const oldTonnage1 = getLotTonnageFromShiftsOld(lot1, testState);
+        const oldTonnage2 = getLotTonnageFromShiftsOld(testState.lots[1], testState);
+        const oldTonnage3 = getLotTonnageFromShiftsOld(testState.lots[2], testState);
+        const oldCallCount = splitCallCount;
+
+        // Test 2: New way (with caching)
+        splitCallCount = 0;
+        const allocations = computeAllShiftAllocations(testState);
+        const newTonnage1 = getLotTonnageFromShiftsNew(lot1, testState, allocations);
+        const newTonnage2 = getLotTonnageFromShiftsNew(testState.lots[1], testState, allocations);
+        const newTonnage3 = getLotTonnageFromShiftsNew(testState.lots[2], testState, allocations);
+        const newCallCount = splitCallCount;
+
+        const html = `
+            <h2>Results:</h2>
+            <table border="1" cellpadding="10">
+                <tr>
+                    <th></th>
+                    <th>Old Method (Uncached)</th>
+                    <th>New Method (Cached)</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+                    <td><strong>splitShiftAcrossLots calls</strong></td>
+                    <td>${oldCallCount}</td>
+                    <td>${newCallCount}</td>
+                    <td>${newCallCount < oldCallCount ? '✅ FIXED' : '❌ NOT FIXED'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Lot 1 tonnage</strong></td>
+                    <td>${oldTonnage1/100}t</td>
+                    <td>${newTonnage1/100}t</td>
+                    <td>${oldTonnage1 === newTonnage1 ? '✅ MATCH' : '❌ MISMATCH'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Lot 2 tonnage</strong></td>
+                    <td>${oldTonnage2/100}t</td>
+                    <td>${newTonnage2/100}t</td>
+                    <td>${oldTonnage2 === newTonnage2 ? '✅ MATCH' : '❌ MISMATCH'}</td>
+                </tr>
+                <tr>
+                    <td><strong>Lot 3 tonnage</strong></td>
+                    <td>${oldTonnage3/100}t</td>
+                    <td>${newTonnage3/100}t</td>
+                    <td>${oldTonnage3 === newTonnage3 ? '✅ MATCH' : '❌ MISMATCH'}</td>
+                </tr>
+            </table>
+            <h3>Analysis:</h3>
+            <p><strong>Old method calls:</strong> ${oldCallCount} (3 lots × 3 shifts)</p>
+            <p><strong>New method calls:</strong> ${newCallCount} (just 3 shifts, reused for all lots)</p>
+            <p><strong>Reduction:</strong> ${oldCallCount - newCallCount} fewer calls (${Math.round((1 - newCallCount/oldCallCount)*100)}% reduction)</p>
+        `;
+
+        result.innerHTML = html;
+    </script>
+</body>
+</html>

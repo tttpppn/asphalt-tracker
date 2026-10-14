@@ -307,22 +307,50 @@ function getLotTonnageFromLedger(lot, ledger) {
   return Math.min(lastEntry.afterCt, range.end) - range.start;
 }
 
-function getLotTonnageFromShifts(lot, state, today = new Date()) {
-  // Calculate actual tonnage allocated to this lot from all shifts (including RENEWAL allocations)
-  const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+function computeAllShiftAllocations(state, today = new Date()) {
+  // Pre-compute all shift allocations once to avoid duplicate calls to splitShiftAcrossLots
+  // Returns: { [shiftId]: { splits, mixTotalBefore, mixTotalAfter } }
+  const sortedShifts = sortShifts(state.shifts);
+  const allocations = {};
+  const mixTotals = {}; // Track cumulative total per mix
+
+  sortedShifts.forEach(shift => {
+    const key = normMix(shift.mix);
+    const lotsForMix = state.lots.filter(l => l.mixKey === key);
+
+    const mixTotalBefore = mixTotals[key] || 0;
+    const mixTotalAfter = mixTotalBefore + toCt(shift.tonsCt);
+
+    const splits = shift.bridge ? [] : splitShiftAcrossLots(
+      mixTotalBefore,
+      mixTotalAfter,
+      lotsForMix,
+      shift.date,
+      today
+    );
+
+    allocations[shift.id] = { splits, mixTotalBefore, mixTotalAfter };
+    mixTotals[key] = mixTotalAfter;
+  });
+
+  return allocations;
+}
+
+function getLotTonnageFromShifts(lot, state, allocations, today = new Date()) {
+  // Calculate actual tonnage allocated to this lot from cached allocations
   const sortedShifts = sortShifts(state.shifts);
   let total = 0;
 
-  let mixTotalBefore = 0;
   sortedShifts.forEach(shift => {
     if (normMix(shift.mix) !== lot.mixKey || shift.bridge) return;
 
-    const splits = splitShiftAcrossLots(mixTotalBefore, mixTotalBefore + toCt(shift.tonsCt), lotsForMix, shift.date, today);
-    const allocation = splits.find(s => s.lotNo === lot.lotNo);
-    if (allocation) {
-      total += allocation.ct;
+    const alloc = allocations[shift.id];
+    if (alloc) {
+      const allocation = alloc.splits.find(s => s.lotNo === lot.lotNo);
+      if (allocation) {
+        total += allocation.ct;
+      }
     }
-    mixTotalBefore += toCt(shift.tonsCt);
   });
 
   return total;
@@ -604,7 +632,7 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
 // ============================================================================
 // SAMPLE DUE DATE
 // ============================================================================
-function findSampleDate(ledger, sampleCt, lot) {
+function findSampleDate(ledger, sampleCt, lot, allocations) {
   for (const entry of ledger) {
     if (entry.excluded) continue;
 
@@ -623,23 +651,24 @@ function findSampleDate(ledger, sampleCt, lot) {
     }
   }
 
-  // If not found in ledger (e.g., RENEWAL allocations), find from shifts directly
-  if (lot) {
-    const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+  // If not found in ledger (e.g., RENEWAL allocations), find from shifts directly using cached allocations
+  if (lot && allocations) {
     const sortedShifts = sortShifts(state.shifts);
     let cumulativeCt = 0;
 
     for (const shift of sortedShifts) {
       if (normMix(shift.mix) !== lot.mixKey || shift.bridge) continue;
 
-      const splits = splitShiftAcrossLots(cumulativeCt, cumulativeCt + toCt(shift.tonsCt), lotsForMix, shift.date);
-      const allocation = splits.find(s => s.lotNo === lot.lotNo);
+      const alloc = allocations[shift.id];
+      if (alloc) {
+        const allocation = alloc.splits.find(s => s.lotNo === lot.lotNo);
 
-      if (allocation && cumulativeCt + allocation.ct >= sampleCt) {
-        return shift.date;
+        if (allocation && cumulativeCt + allocation.ct >= sampleCt) {
+          return shift.date;
+        }
+
+        cumulativeCt += allocation.ct;
       }
-
-      cumulativeCt += toCt(shift.tonsCt);
     }
   }
 
@@ -676,8 +705,11 @@ function derive(state, today = new Date()) {
 
   reconcileLots(state, ledgers, today);
 
+  // Pre-compute all shift allocations once to avoid duplicate splitShiftAcrossLots calls
+  const allocations = computeAllShiftAllocations(state, today);
+
   state.lots.forEach(lot => {
-    const lotTonnage = getLotTonnageFromShifts(lot, state, today);
+    const lotTonnage = getLotTonnageFromShifts(lot, state, allocations, today);
 
     for (let n = 1; n <= SUBLOTS_PER_LOT; n++) {
       // Use RELATIVE ranges (0-3500), not absolute
@@ -707,20 +739,8 @@ function derive(state, today = new Date()) {
 
   sortedShifts.forEach(shift => {
     const key = normMix(shift.mix);
-    const lotsForMix = state.lots.filter(l => l.mixKey === key);
-
-    let mixTotalBefore = 0;
-    Object.keys(lotTotals).forEach(lotKey => {
-      if (lotKey.startsWith(key + ':')) mixTotalBefore += lotTotals[lotKey];
-    });
-
-    const splits = shift.bridge ? [] : splitShiftAcrossLots(
-      mixTotalBefore,
-      mixTotalBefore + toCt(shift.tonsCt),
-      lotsForMix,
-      shift.date,
-      today
-    );
+    const alloc = allocations[shift.id];
+    const splits = alloc?.splits || [];
 
     if (shift.bridge) {
       shiftRows.push({
@@ -774,7 +794,7 @@ function derive(state, today = new Date()) {
 
       if (sample.tonCt !== null) {
         // Samples are now stored as RELATIVE values (0-3500), not absolute
-        sampleDate = findSampleDate(lotLedger, sample.tonCt, lot);
+        sampleDate = findSampleDate(lotLedger, sample.tonCt, lot, allocations);
         status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
       }
 
