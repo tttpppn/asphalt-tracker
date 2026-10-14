@@ -401,6 +401,13 @@ function computeMixLedgers(state) {
 // ============================================================================
 // LOT RECONCILIATION
 // ============================================================================
+function isLotExpired(lot, today = new Date()) {
+  if (!lot.createdDate || !lot.expirationDate) return false;
+  const expirationD = parseLocalDate(lot.expirationDate);
+  today.setHours(0, 0, 0, 0);
+  return today > expirationD;
+}
+
 function reconcileLots(state, ledgers, today = new Date()) {
   const lotsForMix = {};
   state.lots.forEach(lot => {
@@ -414,6 +421,9 @@ function reconcileLots(state, ledgers, today = new Date()) {
     lotsForMix[key].sort((a, b) => a.index - b.index);
   });
 
+  // Always recalculate nextLotNo to ensure it's never conflicting with existing lots
+  state.nextLotNo = Math.max(...state.lots.map(l => l.lotNo), state.settings.startLotNo - 1) + 1;
+
   Object.keys(ledgers).forEach(key => {
     const ledger = ledgers[key];
     if (ledger.length === 0) return;
@@ -422,51 +432,42 @@ function reconcileLots(state, ledgers, today = new Date()) {
     const existing = lotsForMix[key];
 
     let requiredIndex = -1;
-    let currentLotCreatedDate = null;
-    const lotCreatedByShift = {}; // Track which shift created each lot index
 
     for (const entry of ledger) {
       if (entry.excluded) continue;
 
-      const shiftDate = parseLocalDate(entry.shift.date);
       const neededByTonnage = Math.ceil(entry.afterCt / toCt(LOT_TONS)) - 1;
-      let neededByTime = neededByTonnage;
-
-      if (currentLotCreatedDate && daysBetween(currentLotCreatedDate, shiftDate) >= WINDOW_DAYS) {
-        neededByTime = requiredIndex + 1;
-        currentLotCreatedDate = shiftDate;
-        lotCreatedByShift[neededByTime] = entry.shift.date;
-      } else if (currentLotCreatedDate === null) {
-        currentLotCreatedDate = shiftDate;
-      }
-
-      requiredIndex = Math.max(requiredIndex, Math.max(neededByTonnage, neededByTime));
+      requiredIndex = Math.max(requiredIndex, neededByTonnage);
     }
 
     for (let idx = 0; idx <= requiredIndex; idx++) {
-      if (existing.some(l => l.index === idx)) continue;
-
-      if (state.nextLotNo === undefined) {
-        state.nextLotNo = Math.max(...state.lots.map(l => l.lotNo), state.settings.startLotNo - 1) + 1;
-      }
-      const nextLotNo = state.nextLotNo;
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
       const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
-      const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : lotCreatedByShift[idx] || fmtLocalDate(today);
+      const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : fmtLocalDate(today);
 
-      const newLot = {
-        lotNo: nextLotNo,
-        mix: state.shifts.find(s => normMix(s.mix) === key).mix,
-        mixKey: key,
-        index: idx,
-        createdBy: 'auto',
-        createdDate: lotDate,
-        expirationDate: addDays(lotDate, WINDOW_DAYS),
-        samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
-      };
-      state.nextLotNo = nextLotNo + 1;
-      existing.push(newLot);
-      state.lots.push(newLot);
+      const existingActiveLot = existing.find(l => l.index === idx && !isLotExpired(l, today));
+      if (existingActiveLot) {
+        // Reuse active (non-expired) lot - update dates based on actual shifts
+        existingActiveLot.createdDate = lotDate;
+        existingActiveLot.expirationDate = addDays(lotDate, WINDOW_DAYS);
+      } else {
+        // Create new lot (either no lot at this index or existing lot is expired)
+        const nextLotNo = state.nextLotNo;
+
+        const newLot = {
+          lotNo: nextLotNo,
+          mix: state.shifts.find(s => normMix(s.mix) === key).mix,
+          mixKey: key,
+          index: idx,
+          createdBy: 'auto',
+          createdDate: lotDate,
+          expirationDate: addDays(lotDate, WINDOW_DAYS),
+          samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
+        };
+        state.nextLotNo = nextLotNo + 1;
+        existing.push(newLot);
+        state.lots.push(newLot);
+      }
     }
   });
 }
@@ -528,10 +529,24 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   const lotsToUse = activeLotsIndices.size > 0 ? activeLotsIndices : null;
   console.log(`Using filter: ${lotsToUse ? 'non-expired only' : 'all lots (fallback)'}`);
 
-  // Second pass: allocate shift tonnage, skipping expired lots
-  // If a lot expires, allocate its remaining tonnage to the next active lot
+  // Track expired lots separately for fallback check
+  const expiredLotIndices = new Set();
+  sorted.forEach(lot => {
+    if (lot.createdDate && shiftDate) {
+      const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
+      const shiftD = parseLocalDate(shiftDate);
+      const expirationD = parseLocalDate(expirationDate);
+      if (shiftD > expirationD) {
+        expiredLotIndices.add(lot.index);
+      }
+    }
+  });
+
+  // Second pass: allocate shift tonnage based on range overlaps with active lots
   const result = [];
   let remaining = afterCt - beforeCt;
+  let lastAllocEnd = beforeCt; // Track the last position we allocated up to
+  let hasSkippedExpired = false; // Track if we've skipped any expired lots
 
   sorted.forEach(lot => {
     if (remaining <= 0) return;
@@ -539,15 +554,24 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
     const lotRange = lotRangeCt(lot);
     console.log(`\n  Processing Lot ${lot.lotNo}:`);
 
-    // Check if expired
-    const isExpired = lotsToUse && !lotsToUse.has(lot.index);
+    // Skip expired lots completely - don't advance allocation position
+    const isExpired = expiredLotIndices.has(lot.index);
     if (isExpired) {
       console.log(`    SKIP: EXPIRED - closed to new tonnage`);
-      return;
+      hasSkippedExpired = true; // Mark that we've skipped an expired lot
+      return; // Don't advance lastAllocEnd - let next lot consume entire shift
     }
 
-    // Calculate intersection of shift range [beforeCt, afterCt) with this lot's range
-    const allocStart = Math.max(beforeCt, lotRange.start);
+    // Active lot: if we skipped expired lots, start from shift beginning to fill the gap
+    let allocStart;
+    if (hasSkippedExpired && beforeCt < lotRange.start) {
+      // There's a gap from expired lots - this active lot fills it
+      allocStart = beforeCt;
+      hasSkippedExpired = false; // Only apply this correction once
+    } else {
+      allocStart = Math.max(lastAllocEnd, lotRange.start);
+    }
+
     const allocEnd = Math.min(afterCt, lotRange.end);
 
     if (allocEnd > allocStart) {
@@ -555,45 +579,18 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
       console.log(`    ✓ ACTIVE LOT - allocating ${allocation/100}t to Lot ${lot.lotNo}`);
       result.push({ lotNo: lot.lotNo, ct: allocation });
       remaining -= allocation;
-    } else if (beforeCt >= lotRange.end) {
+      lastAllocEnd = allocEnd;
+    } else if (lastAllocEnd >= lotRange.end) {
       console.log(`    SKIP: beyond this lot's range`);
     } else {
       console.log(`    SKIP: not yet in this lot's range`);
     }
   });
 
-  // Fallback: if tonnage remains after checking all lots,
-  // find which lot should have received it and allocate to next active lot
+  // If remaining tonnage exists, check if it needs new lot creation
   if (remaining > 0 && lotsToUse && lotsToUse.size > 0) {
-    // Determine which lot's range the remaining tonnage should occupy
-    const shiftRangeStart = beforeCt + ((afterCt - beforeCt) - remaining);
-    let targetLotForRemainder = null;
-
-    for (const lot of sorted) {
-      const lotRange = lotRangeCt(lot);
-      if (shiftRangeStart < lotRange.end) {
-        targetLotForRemainder = lot;
-        break;
-      }
-    }
-
-    // If target lot is expired, allocate to next non-expired lot instead
-    if (targetLotForRemainder) {
-      const isTargetExpired = lotsToUse && !lotsToUse.has(targetLotForRemainder.index);
-      const finalLot = isTargetExpired
-        ? sorted.find(l => l.index > targetLotForRemainder.index && lotsToUse.has(l.index))
-        : (lotsToUse.has(targetLotForRemainder.index) ? targetLotForRemainder : null);
-
-      if (finalLot && !result.find(r => r.lotNo === finalLot.lotNo)) {
-        const action = isTargetExpired ? 'RENEWAL (expired lot → next active)' : 'ACTIVE LOT';
-        console.log(`\n  ${action}: Allocating remaining ${remaining/100}t to Lot ${finalLot.lotNo}`);
-        result.push({ lotNo: finalLot.lotNo, ct: remaining });
-        remaining = 0;
-      }
-    }
-  }
-
-  if (remaining > 0) {
+    console.log(`\n  ℹ Info: ${remaining/100}t overflow will create new lot (reconcileLots)`);
+  } else if (remaining > 0) {
     console.log(`\n⚠ WARNING: ${remaining/100}t unallocated (no active lots available)`);
   }
 
@@ -1465,7 +1462,6 @@ function loadExampleData() {
         mixKey: 'pma0.5',
         index: 1,
         createdBy: 'auto',
-        createdDate: '2026-07-20',
         samples: [
           { tonCt: toCt(250), taken: false },
           { tonCt: null, taken: false },
