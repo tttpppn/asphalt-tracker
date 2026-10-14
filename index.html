@@ -403,6 +403,14 @@ function computeMixLedgers(state) {
 // LOT RECONCILIATION
 // ============================================================================
 function reconcileLots(state, ledgers, today = new Date()) {
+  // Deduplicate state.lots to prevent duplicate lot entries
+  const seenLotNos = new Set();
+  state.lots = state.lots.filter(lot => {
+    if (seenLotNos.has(lot.lotNo)) return false;
+    seenLotNos.add(lot.lotNo);
+    return true;
+  });
+
   const lotsForMix = {};
   state.lots.forEach(lot => {
     const key = normMix(lot.mix);
@@ -410,8 +418,8 @@ function reconcileLots(state, ledgers, today = new Date()) {
     lotsForMix[key].push(lot);
   });
 
-  state.lots.forEach(lot => {
-    const key = normMix(lot.mix);
+  // Sort once per mix, not per lot
+  Object.keys(lotsForMix).forEach(key => {
     lotsForMix[key].sort((a, b) => a.index - b.index);
   });
 
@@ -451,6 +459,13 @@ function reconcileLots(state, ledgers, today = new Date()) {
         state.nextLotNo = Math.max(...state.lots.map(l => l.lotNo), state.settings.startLotNo - 1) + 1;
       }
       const nextLotNo = state.nextLotNo;
+
+      // Double-check: ensure this lotNo doesn't already exist in state.lots
+      if (state.lots.some(l => l.lotNo === nextLotNo)) {
+        state.nextLotNo = nextLotNo + 1;
+        continue;
+      }
+
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
       const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
       const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : lotCreatedByShift[idx] || fmtLocalDate(today);
