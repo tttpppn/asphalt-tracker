@@ -449,7 +449,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
         currentLotCreatedDate = shiftDate;
       }
 
-      requiredIndex = Math.max(requiredIndex, Math.max(neededByTonnage, neededByTime));
+      requiredIndex = Math.max(requiredIndex, neededByTime);
     }
 
     for (let idx = 0; idx <= requiredIndex; idx++) {
@@ -502,41 +502,20 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
 
   const sorted = [...lotsForMix].sort((a, b) => a.index - b.index);
 
-  // First pass: collect all non-expired AND not-full lots
+  // First pass: collect all non-full lots (capacity only; age does not block allocation)
   const activeLotsIndices = new Set();
   sorted.forEach(lot => {
     const lotRange = lotRangeCt(lot);
     console.log(`\nLot ${lot.lotNo} (index ${lot.index}): range [${lotRange.start/100}t, ${lotRange.end/100}t)`);
     console.log(`  createdDate: ${lot.createdDate}`);
 
-    // Check 1: Is lot full? (already at or past 3500 tons for this lot)
-    const lotCapacity = toCt(LOT_TONS);
-    const lotIsFull = (lotRange.end - lotRange.start) <= 0; // If range is collapsed, lot is full
+    // Only check: Is lot full? (at or past 3500 tons capacity)
+    const lotIsFull = (lotRange.end - lotRange.start) <= 0;
     if (lotIsFull) {
-      console.log(`  ✗ FULL (capacity exceeded)`);
-    }
-
-    // Check 2: Is lot expired? (30 days since creation)
-    let isExpired = false;
-    if (shiftDate && lot.createdDate) {
-      const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
-      const shiftD = parseLocalDate(shiftDate);
-      const expirationD = parseLocalDate(expirationDate);
-      console.log(`  expirationDate: ${expirationDate}`);
-      console.log(`  30-day check: shiftDate(${shiftDate}) <= expirationDate(${expirationDate})? ${shiftD <= expirationD}`);
-
-      if (shiftD > expirationD) {
-        console.log(`  ✗ EXPIRED (30+ days old)`);
-        isExpired = true;
-      }
-    }
-
-    // Lot is ACTIVE only if it's NOT full AND NOT expired
-    if (!lotIsFull && !isExpired) {
-      console.log(`  ✓ ACTIVE (has capacity & not expired)`);
+      console.log(`  ✗ FULL (at 3500t capacity)`);
+    } else {
+      console.log(`  ✓ ACTIVE (has capacity)`);
       activeLotsIndices.add(lot.index);
-    } else if (lotIsFull && !isExpired) {
-      console.log(`  ✗ CLOSED (full, move to next lot)`);
     }
   });
 
@@ -1610,10 +1589,18 @@ document.addEventListener('DOMContentLoaded', () => {
   state = loadState();
 
   if (!state) {
-    loadExampleData();
-  } else {
-    render();
+    state = {
+      version: 1,
+      settings: { startLotNo: 100 },
+      nextSeq: 100,
+      nextLotNo: 100,
+      shifts: [],
+      lots: [],
+      ui: { sortMode: 'date', filterLot: '', filterMix: '', hideEmpty: false }
+    };
   }
+
+  render();
 
   // Event listeners
   document.getElementById('addShiftBtn').onclick = () => {
