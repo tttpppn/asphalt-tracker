@@ -429,11 +429,11 @@ const WINDOW_DAYS = 30;
 const STORAGE_KEY = 'pwlTracker.v1';
 
 // ============================================================================
-// SUPABASE CONFIGURATION (Phase 1)
+// SUPABASE CONFIGURATION (Phase 7: Production Cutover)
 // ============================================================================
-const BACKEND = 'local'; // 'local' or 'supabase' — flip this to enable Supabase
-const SUPABASE_URL = ''; // Add your Supabase project URL here
-const SUPABASE_ANON_KEY = ''; // Add your anon key here
+const BACKEND = 'supabase'; // 'local' or 'supabase' — Phase 7: switched to supabase
+const SUPABASE_URL = ''; // REQUIRED: Add your Supabase project URL here
+const SUPABASE_ANON_KEY = ''; // REQUIRED: Add your anon key here
 let supabase = null; // Initialized after page load if BACKEND='supabase'
 let isReadOnly = false; // Set to true if load fails but fallback succeeds (Phase 3)
 
