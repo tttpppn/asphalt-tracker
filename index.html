@@ -432,8 +432,8 @@ const STORAGE_KEY = 'pwlTracker.v1';
 // SUPABASE CONFIGURATION (Phase 7: Production Cutover)
 // ============================================================================
 const BACKEND = 'supabase'; // 'local' or 'supabase' — Phase 7: switched to supabase
-const SUPABASE_URL = ''; // REQUIRED: Add your Supabase project URL here
-const SUPABASE_ANON_KEY = ''; // REQUIRED: Add your anon key here
+const SUPABASE_URL = 'https://vybyqhezartloqotaxrf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5YnlxaGV6YXJ0bG9xb3RheHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MzAzNjgsImV4cCI6MjEwNzUwNjM2OH0.rCQ6R8xarYFpIh4IYOoEjekTyZyYy339umnULF7BGfM';
 let supabase = null; // Initialized after page load if BACKEND='supabase'
 let isReadOnly = false; // Set to true if load fails but fallback succeeds (Phase 3)
 
