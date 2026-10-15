@@ -435,6 +435,7 @@ const BACKEND = 'local'; // 'local' or 'supabase' — flip this to enable Supaba
 const SUPABASE_URL = ''; // Add your Supabase project URL here
 const SUPABASE_ANON_KEY = ''; // Add your anon key here
 let supabase = null; // Initialized after page load if BACKEND='supabase'
+let isReadOnly = false; // Set to true if load fails but fallback succeeds (Phase 3)
 
 // ============================================================================
 // UTILITIES
@@ -1144,10 +1145,111 @@ function migrateState(loaded) {
   return migrated;
 }
 
-function loadState() {
+// ============================================================================
+// SUPABASE DATA FETCHING (Phase 3)
+// ============================================================================
+
+// Fetch all data from Supabase with pagination (1000 row limit)
+async function fetchAll() {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  try {
+    // Fetch settings (single row)
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+    if (settingsError) throw new Error(`Settings fetch failed: ${settingsError.message}`);
+
+    // Fetch lots (paginate at 1000)
+    const lotsData = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('lots')
+        .select('*')
+        .range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw new Error(`Lots fetch failed: ${error.message}`);
+      if (!data || data.length === 0) break;
+      lotsData.push(...data);
+      if (data.length < 1000) break;
+      page++;
+    }
+
+    // Fetch shifts (paginate at 1000)
+    const shiftsData = [];
+    page = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw new Error(`Shifts fetch failed: ${error.message}`);
+      if (!data || data.length === 0) break;
+      shiftsData.push(...data);
+      if (data.length < 1000) break;
+      page++;
+    }
+
+    // Fetch samples (paginate at 1000)
+    const samplesData = [];
+    page = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('samples')
+        .select('*')
+        .range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw new Error(`Samples fetch failed: ${error.message}`);
+      if (!data || data.length === 0) break;
+      samplesData.push(...data);
+      if (data.length < 1000) break;
+      page++;
+    }
+
+    return { settings: settingsData, lots: lotsData, shifts: shiftsData, samples: samplesData };
+  } catch (e) {
+    console.error('fetchAll error:', e);
+    throw e;
+  }
+}
+
+// ============================================================================
+// ASYNC LOADSTATE (Phase 3)
+// ============================================================================
+
+async function loadState() {
+  // If Supabase is enabled and configured, try to fetch from there
+  if (BACKEND === 'supabase' && supabase) {
+    try {
+      console.log('Loading from Supabase...');
+      showBanner('Loading data from Supabase...', 'info');
+
+      const rows = await fetchAll();
+      const loaded = rowsToState(rows.settings, rows.lots, rows.shifts, rows.samples);
+      const migrated = migrateState(loaded);
+
+      if (!migrated) {
+        throw new Error('State validation failed after migration');
+      }
+
+      console.log('Loaded from Supabase successfully');
+      showBanner('Loaded from Supabase', 'success');
+      return migrated;
+    } catch (e) {
+      console.error('Supabase fetch failed:', e.message);
+      showBanner(`Supabase load failed: ${e.message}. Falling back to localStorage.`, 'error');
+      // Fall through to localStorage fallback
+    }
+  }
+
+  // Fallback to localStorage
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return null;
+    if (!data) {
+      console.log('No stored data found');
+      return null;
+    }
 
     const loaded = JSON.parse(data);
     const migrated = migrateState(loaded);
@@ -1156,6 +1258,11 @@ function loadState() {
       showBanner('Corrupted save data, starting fresh', 'error');
       localStorage.removeItem(STORAGE_KEY);
       return null;
+    }
+
+    if (BACKEND === 'supabase') {
+      isReadOnly = true;
+      showBanner('Running in read-only mode (offline)', 'error');
     }
 
     return migrated;
@@ -1976,7 +2083,7 @@ function runSelfTest() {
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Initialize Supabase client if enabled (Phase 1)
   if (BACKEND === 'supabase' && SUPABASE_URL && SUPABASE_ANON_KEY) {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1986,7 +2093,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showBanner('Supabase not configured. Using localStorage.', 'error');
   }
 
-  state = loadState();
+  // Load state asynchronously (Phase 3)
+  try {
+    state = await loadState();
+  } catch (e) {
+    console.error('Fatal error loading state:', e);
+    showBanner(`Fatal error: ${e.message}. Cannot start app.`, 'error');
+    return;
+  }
 
   if (!state) {
     state = {
