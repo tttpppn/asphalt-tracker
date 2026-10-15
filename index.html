@@ -1314,13 +1314,17 @@ async function fetchAll() {
   if (!supabase) throw new Error('Supabase client not initialized');
 
   try {
-    // Fetch settings (single row)
-    const { data: settingsData, error: settingsError } = await supabase
+    // Fetch settings (single row) — handle empty table on first load
+    let settingsData = null;
+    const { data, error: settingsError } = await supabase
       .from('settings')
       .select('*')
       .eq('id', 1)
       .single();
-    if (settingsError) throw new Error(`Settings fetch failed: ${settingsError.message}`);
+    // On first load, settings row may not exist — use null and let defaults apply
+    if (!settingsError) {
+      settingsData = data;
+    }
 
     // Fetch lots (paginate at 1000)
     const lotsData = [];
