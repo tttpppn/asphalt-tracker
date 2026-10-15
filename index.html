@@ -1179,7 +1179,7 @@ async function persistState() {
           lot.samples.forEach((sample, sublot) => {
             samplesRows.push({
               lot_no: lot.lotNo,
-              sublot: sublot + 1,
+              sublot_number: sublot + 1,
               ton_ct: sample.tonCt ?? null,
               taken: sample.taken ?? false,
             });
@@ -1190,7 +1190,7 @@ async function persistState() {
     if (samplesRows.length > 0) {
       const { error: samplesError } = await supabase
         .from('samples')
-        .upsert(samplesRows, { onConflict: 'lot_no,sublot' });
+        .upsert(samplesRows, { onConflict: 'lot_no,sublot_number' });
       if (samplesError) {
         console.error('persistState samples error:', samplesError);
         showBanner(`Persist failed: samples ${samplesError?.message || JSON.stringify(samplesError)}`, 'error');
