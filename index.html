@@ -1193,7 +1193,7 @@ async function persistState() {
         .upsert(samplesRows, { onConflict: 'lot_no,sublot' });
       if (samplesError) {
         console.error('persistState samples error:', samplesError);
-        showBanner(`Persist failed: samples ${samplesError.message}`, 'error');
+        showBanner(`Persist failed: samples ${samplesError?.message || JSON.stringify(samplesError)}`, 'error');
         return;
       }
     }
