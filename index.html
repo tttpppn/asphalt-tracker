@@ -403,6 +403,8 @@
     <button id="exportCsvBtn" class="secondary">Export CSV</button>
     <button id="importCsvBtn" class="secondary">Import CSV (Shifts)</button>
     <button id="exportJsonBtn" class="secondary">Export JSON</button>
+    <button id="backupNowBtn" class="primary">💾 Backup Now (3-month cycle)</button>
+    <button id="restoreBackupBtn" class="primary">📂 Restore from Backup</button>
     <button id="importJsonBtn" class="secondary">Import JSON</button>
     <button id="selfTestBtn" class="secondary">Self-Test</button>
     <button id="loadExampleBtn" class="secondary">Load Example Data</button>
@@ -652,6 +654,10 @@ function reconcileLots(state, ledgers, today = new Date()) {
     if (!lotsForMix[key]) lotsForMix[key] = [];
     const existing = lotsForMix[key];
 
+    // If we have existing lots for this mix, preserve them (don't recreate)
+    const existingIndices = new Set(existing.map(l => l.index));
+    const maxExistingIndex = Math.max(...Array.from(existingIndices), -1);
+
     let requiredIndex = -1;
     let currentWindowStart = null;  // Track the 30-day window start date
     const lotWindowStart = {};      // Map index to window start date
@@ -880,10 +886,12 @@ function lotWindow(lot, ledger, today) {
 // ============================================================================
 // DERIVE: PURE COMPUTATION OF ALL DERIVED STATE
 // ============================================================================
-function derive(state, today = new Date()) {
+function derive(state, today = new Date(), skipReconcile = false) {
   const ledgers = computeMixLedgers(state);
 
-  reconcileLots(state, ledgers, today);
+  if (!skipReconcile) {
+    reconcileLots(state, ledgers, today);
+  }
 
   // Pre-compute shift allocations to avoid duplicate splitShiftAcrossLots calls
   const shiftAllocations = {};
@@ -1242,6 +1250,56 @@ function migrateState(loaded) {
       });
     }
   });
+
+  // Ensure lots have all required fields for reconcileLots to work correctly
+  if (Array.isArray(migrated.lots) && migrated.lots.length > 0) {
+    const lotsByMix = {};
+    migrated.lots.forEach(lot => {
+      lot.mixKey = lot.mixKey || normMix(lot.mix);
+      if (!lot.windowStartDate && lot.createdDate) {
+        lot.windowStartDate = lot.createdDate;
+      }
+      if (!lot.expirationDate && lot.windowStartDate) {
+        lot.expirationDate = addDays(lot.windowStartDate, WINDOW_DAYS);
+      }
+      // Group by mix to auto-assign indices if missing
+      if (!lotsByMix[lot.mixKey]) lotsByMix[lot.mixKey] = [];
+      lotsByMix[lot.mixKey].push(lot);
+    });
+
+    // Assign indices by position within each mix if not present, detect duplicates
+    Object.keys(lotsByMix).forEach(mix => {
+      lotsByMix[mix].sort((a, b) => (a.lotNo || 0) - (b.lotNo || 0));
+      const seenIndices = new Set();
+      lotsByMix[mix].forEach((lot, idx) => {
+        // Force correct index assignment to prevent duplicates
+        if (lot.index !== undefined && seenIndices.has(lot.index)) {
+          console.warn(`Duplicate index ${lot.index} in mix ${mix}, fixing Lot ${lot.lotNo}`);
+          lot.index = idx;
+        } else if (lot.index === undefined) {
+          lot.index = idx;
+        }
+        seenIndices.add(lot.index);
+      });
+    });
+
+    // Remove any duplicate lots by lotNo (keep first occurrence)
+    const seenLotNos = new Set();
+    migrated.lots = migrated.lots.filter(lot => {
+      if (seenLotNos.has(lot.lotNo)) {
+        console.warn(`Removing duplicate Lot ${lot.lotNo}`);
+        return false;
+      }
+      seenLotNos.add(lot.lotNo);
+      return true;
+    });
+
+    // Set nextLotNo to be highest imported lot number + 1
+    const maxLotNo = Math.max(...migrated.lots.map(l => l.lotNo || 0));
+    if (isFinite(maxLotNo) && maxLotNo > 0) {
+      migrated.nextLotNo = maxLotNo + 1;
+    }
+  }
 
   return migrated;
 }
@@ -1927,6 +1985,191 @@ function exportJSON() {
   showBanner('JSON exported', 'success');
 }
 
+async function backupNow() {
+  try {
+    if (!confirm('Backup current data and reset database? Data will start fresh after backup.')) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const backupName = `backup-${timestamp}.json`;
+    const json = JSON.stringify(state, null, 2);
+
+    if (BACKEND === 'supabase' && supabase) {
+      // Step 1: Save backup to Supabase storage
+      const { error: uploadError } = await supabase.storage.from('backups').upload(backupName, json, {
+        contentType: 'application/json',
+        upsert: false
+      });
+
+      if (uploadError) throw uploadError;
+      console.log('✓ Backup saved:', backupName);
+
+      // Step 2: Clear all data tables
+      showBanner('Clearing database...', 'info');
+
+      const { error: samplesError } = await supabase.from('samples').delete().neq('lot_no', -1);
+      if (samplesError) console.warn('Samples delete warning:', samplesError);
+
+      const { error: shiftsError } = await supabase.from('shifts').delete().neq('id', null);
+      if (shiftsError) console.warn('Shifts delete warning:', shiftsError);
+
+      const { error: lotsError } = await supabase.from('lots').delete().neq('lot_no', -1);
+      if (lotsError) console.warn('Lots delete warning:', lotsError);
+
+      // Step 3: Reset settings to defaults
+      const { error: settingsError } = await supabase.from('settings').update({
+        next_seq: 0,
+        next_lot_no: 100
+      }).eq('id', 1);
+      if (settingsError) console.warn('Settings reset warning:', settingsError);
+
+      // Step 4: Clear localStorage
+      localStorage.removeItem(STORAGE_KEY);
+
+      showBanner(`✓ Backup saved: ${backupName} | Database reset ✓`, 'success');
+      console.log('Backup complete and database cleared');
+
+      // Reload to start fresh
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      // Fallback: download locally
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = backupName;
+      a.click();
+      URL.revokeObjectURL(url);
+      showBanner(`✓ Backup downloaded: ${backupName}`, 'success');
+    }
+  } catch (err) {
+    showBanner('Backup failed: ' + err.message, 'error');
+    console.error('Backup error:', err);
+  }
+}
+
+async function restoreFromBackup() {
+  try {
+    if (!BACKEND === 'supabase' || !supabase) {
+      showBanner('Supabase not configured', 'error');
+      return;
+    }
+
+    showBanner('Loading backups...', 'info');
+
+    // List all files in backups bucket
+    const { data: files, error: listError } = await supabase.storage.from('backups').list();
+
+    if (listError) throw listError;
+
+    if (!files || files.length === 0) {
+      showBanner('No backups found', 'error');
+      return;
+    }
+
+    // Sort by newest first
+    files.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Create modal with backup list
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 10000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: white; padding: 30px; border-radius: 8px; max-width: 500px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    `;
+
+    content.innerHTML = `
+      <h2 style="margin-bottom: 20px; color: #2c3e50;">Select Backup to Restore</h2>
+      <div id="backupList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+    `;
+
+    const backupList = content.querySelector('#backupList');
+    files.forEach(file => {
+      const btn = document.createElement('button');
+      const date = new Date(file.created_at).toLocaleString();
+      btn.innerHTML = `📄 ${file.name}<br><small style="color: #888;">${date}</small>`;
+      btn.style.cssText = `
+        width: 100%; padding: 12px; text-align: left; border: none;
+        border-bottom: 1px solid #eee; cursor: pointer; background: #f9f9f9;
+        font-size: 0.95rem;
+      `;
+      btn.onmouseover = () => btn.style.background = '#e8f4f8';
+      btn.onmouseout = () => btn.style.background = '#f9f9f9';
+
+      btn.onclick = async () => {
+        modal.remove();
+        await loadBackupFile(file.name);
+      };
+
+      backupList.appendChild(btn);
+    });
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Cancel';
+    closeBtn.style.cssText = `
+      margin-top: 15px; padding: 10px 20px; background: #ddd;
+      border: none; border-radius: 4px; cursor: pointer; width: 100%;
+    `;
+    closeBtn.onclick = () => modal.remove();
+    content.appendChild(closeBtn);
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+  } catch (err) {
+    showBanner('Failed to load backups: ' + err.message, 'error');
+    console.error('Restore error:', err);
+  }
+}
+
+async function loadBackupFile(filename) {
+  try {
+    if (!confirm('Restore this backup? Current data will be replaced.')) return;
+
+    showBanner('Loading backup...', 'info');
+
+    // Download file from Supabase
+    const { data, error } = await supabase.storage.from('backups').download(filename);
+
+    if (error) throw error;
+
+    // Read file content
+    const json = await data.text();
+    const backup = JSON.parse(json);
+
+    // Validate format
+    if (!backup.shifts || !Array.isArray(backup.shifts)) {
+      throw new Error('Invalid backup format');
+    }
+
+    // Load backup data
+    state = backup;
+    saveState();
+    render();
+
+    // Sync restored data to Supabase tables
+    if (BACKEND === 'supabase' && supabase) {
+      showBanner('Syncing to Supabase...', 'info');
+      await persistState();
+      showBanner(`✓ Restored: ${filename} | Synced to Supabase ✓`, 'success');
+    } else {
+      showBanner(`✓ Restored: ${filename}`, 'success');
+    }
+    console.log('Backup restored:', filename);
+
+  } catch (err) {
+    showBanner('Restore failed: ' + err.message, 'error');
+    console.error('Load backup error:', err);
+  }
+}
+
 function importJSON() {
   const input = document.createElement('input');
   input.type = 'file';
@@ -1942,10 +2185,44 @@ function importJSON() {
         if (!imported.shifts || !Array.isArray(imported.shifts)) throw new Error('Invalid format');
 
         if (!confirm('Replace current data with imported data?')) return;
+
+        // Ensure lots have all required fields for reconcileLots to work correctly
+        if (Array.isArray(imported.lots)) {
+          const lotsByMix = {};
+          imported.lots.forEach(lot => {
+            lot.mixKey = lot.mixKey || normMix(lot.mix);
+            if (!lot.windowStartDate && lot.createdDate) {
+              lot.windowStartDate = lot.createdDate;
+            }
+            if (!lot.expirationDate && lot.windowStartDate) {
+              lot.expirationDate = addDays(lot.windowStartDate, WINDOW_DAYS);
+            }
+            // Group by mix to auto-assign indices if missing
+            if (!lotsByMix[lot.mixKey]) lotsByMix[lot.mixKey] = [];
+            lotsByMix[lot.mixKey].push(lot);
+          });
+
+          // Assign indices by position within each mix if not present
+          Object.keys(lotsByMix).forEach(mix => {
+            lotsByMix[mix].sort((a, b) => (a.lotNo || 0) - (b.lotNo || 0));
+            lotsByMix[mix].forEach((lot, idx) => {
+              if (lot.index === undefined) {
+                lot.index = idx;
+              }
+            });
+          });
+
+          // Set nextLotNo to be highest imported lot number + 1
+          const maxLotNo = Math.max(...imported.lots.map(l => l.lotNo || 0));
+          if (isFinite(maxLotNo) && maxLotNo > 0) {
+            imported.nextLotNo = maxLotNo + 1;
+          }
+        }
+
         state = imported;
         saveState();
         render();
-        showBanner('Data imported', 'success');
+        showBanner('Data imported successfully', 'success');
       } catch (err) {
         showBanner('Import failed: ' + err.message, 'error');
       }
@@ -2269,7 +2546,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  render();
+  // Initial render: skip reconcileLots to preserve loaded lot structure
+  const today = new Date();
+  const derived = derive(state, today, true);
+  renderSummary(derived);
+  renderSamplingTable(derived);
+  renderShiftTable(derived);
+  renderAnnualSummary(derived);
 
   // Event listeners
   document.getElementById('addShiftBtn').onclick = () => {
@@ -2309,6 +2592,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('exportCsvBtn').onclick = exportCSV;
   document.getElementById('importCsvBtn').onclick = importCSV;
   document.getElementById('exportJsonBtn').onclick = exportJSON;
+  document.getElementById('backupNowBtn').onclick = backupNow;
+  document.getElementById('restoreBackupBtn').onclick = restoreFromBackup;
   document.getElementById('importJsonBtn').onclick = importJSON;
   document.getElementById('selfTestBtn').onclick = runSelfTest;
   document.getElementById('loadExampleBtn').onclick = loadExampleData;
