@@ -1450,7 +1450,7 @@ async function commit() {
   await persistState(); // Then persist to Supabase (Phase 4)
 }
 
-function addShift(date, mix, tons, locations, bridge) {
+async function addShift(date, mix, tons, locations, bridge) {
   if (!date || !mix || !tons) {
     showBanner('Date, mix, and tons are required', 'error');
     return;
@@ -1485,10 +1485,10 @@ function addShift(date, mix, tons, locations, bridge) {
     bridge: !!bridge
   });
   console.log(`✓ Shift added successfully. Total shifts: ${state.shifts.length}`);
-  commit();
+  await commit();
 }
 
-function editShift(id, date, mix, tons, locations, bridge) {
+async function editShift(id, date, mix, tons, locations, bridge) {
   const shift = state.shifts.find(s => s.id === id);
   if (shift) {
     shift.date = date;
@@ -1496,13 +1496,13 @@ function editShift(id, date, mix, tons, locations, bridge) {
     shift.tonsCt = parseFloat(tons);
     shift.locations = (locations || '').trim();
     shift.bridge = !!bridge;
-    commit();
+    await commit();
   }
 }
 
-function deleteShift(id) {
+async function deleteShift(id) {
   state.shifts = state.shifts.filter(s => s.id !== id);
-  commit();
+  await commit();
 }
 
 function getNextLotNo() {
@@ -1512,7 +1512,7 @@ function getNextLotNo() {
   return maxLotNo + 1;
 }
 
-function createLot(mix, lotNo) {
+async function createLot(mix, lotNo) {
   const key = normMix(mix);
   const lotsForMix = state.lots.filter(l => l.mixKey === key);
   const maxIndex = lotsForMix.length > 0 ? Math.max(...lotsForMix.map(l => l.index)) : -1;
@@ -1532,28 +1532,15 @@ function createLot(mix, lotNo) {
   if (!lotNo) state.nextLotNo = nextLotNo + 1;
 
   state.lots.push(newLot);
-  commit();
+  await commit();
 }
 
-function generateSamples(lotNo, seed = null) {
+async function generateSamples(lotNo, seed = null) {
   console.log(`generateSamples called for Lot ${lotNo}`);
   const lot = state.lots.find(l => l.lotNo === lotNo);
   if (!lot) {
     console.log(`ERROR: Lot ${lotNo} not found`);
     return;
-  }
-
-  // Check if lot is expired (30+ days old)
-  if (lot.createdDate) {
-    const createdD = parseLocalDate(lot.createdDate);
-    const expirationD = parseLocalDate(lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS));
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (today > expirationD) {
-      console.log(`ERROR: Lot ${lotNo} is expired (created ${lot.createdDate}, expires ${lot.expirationDate})`);
-      showBanner(`Cannot generate samples for expired Lot ${lotNo}`, 'error');
-      return;
-    }
   }
 
   const rng = seed !== null ? mulberry32(seed) : Math.random;
@@ -1566,32 +1553,32 @@ function generateSamples(lotNo, seed = null) {
   lot.samples = samples;
   console.log(`AFTER assignment: lot.samples=`, lot.samples.map(s => s.tonCt));
 
-  commit();
+  await commit();
   const lotAfterCommit = state.lots.find(l => l.lotNo === lotNo);
   console.log(`AFTER commit: lotAfterCommit.samples=`, lotAfterCommit?.samples.map(s => s.tonCt));
   render();
 }
 
-function deleteLot(lotNo) {
+async function deleteLot(lotNo) {
   if (confirm(`Delete Lot ${lotNo}? This cannot be undone.`)) {
     state.lots = state.lots.filter(l => l.lotNo !== lotNo);
-    commit();
+    await commit();
   }
 }
 
-function editSample(lotNo, sublot, tonCt) {
+async function editSample(lotNo, sublot, tonCt) {
   const lot = state.lots.find(l => l.lotNo === lotNo);
   if (lot && lot.samples[sublot - 1]) {
     lot.samples[sublot - 1].tonCt = tonCt;
-    commit();
+    await commit();
   }
 }
 
-function toggleTaken(lotNo, sublot) {
+async function toggleTaken(lotNo, sublot) {
   const lot = state.lots.find(l => l.lotNo === lotNo);
   if (lot && lot.samples[sublot - 1]) {
     lot.samples[sublot - 1].taken = !lot.samples[sublot - 1].taken;
-    commit();
+    await commit();
   }
 }
 
