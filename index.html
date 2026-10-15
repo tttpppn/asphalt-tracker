@@ -1099,10 +1099,111 @@ function rowsToState(settingsRow, lotsRows, shiftsRows, samplesRows) {
 
 // Convert state to insert/update format for Supabase (Phase 4)
 // Placeholder for Phase 4
+// ============================================================================
+// PERSIST STATE TO SUPABASE (Phase 4)
+// ============================================================================
 async function persistState() {
-  if (BACKEND !== 'supabase' || !supabase) return;
-  // Phase 4: Implement actual persistence
-  console.log('persistState: placeholder for Phase 4');
+  if (BACKEND !== 'supabase' || !supabase || isReadOnly) {
+    if (isReadOnly) console.warn('persistState: read-only mode, skipping');
+    return;
+  }
+
+  if (!state) {
+    console.warn('persistState called with no state');
+    return;
+  }
+
+  try {
+    // 1. Upsert settings (single row, id=1)
+    const settingsRow = {
+      id: 1,
+      start_lot_no: state.startLotNo ?? 100,
+      next_seq: state.nextSeq ?? 0,
+      next_lot_no: state.nextLotNo ?? 105,
+    };
+    const { error: settingsError } = await supabase
+      .from('settings')
+      .upsert(settingsRow, { onConflict: 'id' });
+    if (settingsError) {
+      console.error('persistState settings error:', settingsError);
+      showBanner(`Persist failed: settings ${settingsError.message}`, 'error');
+      return;
+    }
+
+    // 2. Upsert lots
+    if (state.lots && state.lots.length > 0) {
+      const lotsRows = state.lots.map(lot => ({
+        lot_no: lot.lotNo,
+        idx: lot.index,
+        mix: lot.mix,
+        mix_key: lot.mixKey,
+        created_date: lot.createdDate,
+        expiration_date: lot.expirationDate,
+      }));
+      const { error: lotsError } = await supabase
+        .from('lots')
+        .upsert(lotsRows, { onConflict: 'lot_no' });
+      if (lotsError) {
+        console.error('persistState lots error:', lotsError);
+        showBanner(`Persist failed: lots ${lotsError.message}`, 'error');
+        return;
+      }
+    }
+
+    // 3. Upsert shifts
+    if (state.shifts && state.shifts.length > 0) {
+      const shiftsRows = state.shifts.map(shift => ({
+        id: shift.id,
+        date: shift.date,
+        mix: shift.mix,
+        tons_ct: shift.tonsCt,
+        locations: shift.locations || null,
+        bridge_deck: shift.bridge ?? false,
+        seq: shift.seq,
+      }));
+      const { error: shiftsError } = await supabase
+        .from('shifts')
+        .upsert(shiftsRows, { onConflict: 'id' });
+      if (shiftsError) {
+        console.error('persistState shifts error:', shiftsError);
+        showBanner(`Persist failed: shifts ${shiftsError.message}`, 'error');
+        return;
+      }
+    }
+
+    // 4. Upsert samples
+    const samplesRows = [];
+    if (state.lots) {
+      state.lots.forEach(lot => {
+        if (lot.samples && lot.samples.length > 0) {
+          lot.samples.forEach((sample, sublot) => {
+            samplesRows.push({
+              lot_no: lot.lotNo,
+              sublot: sublot + 1,
+              ton_ct: sample.tonCt ?? null,
+              taken: sample.taken ?? false,
+            });
+          });
+        }
+      });
+    }
+    if (samplesRows.length > 0) {
+      const { error: samplesError } = await supabase
+        .from('samples')
+        .upsert(samplesRows, { onConflict: 'lot_no,sublot' });
+      if (samplesError) {
+        console.error('persistState samples error:', samplesError);
+        showBanner(`Persist failed: samples ${samplesError.message}`, 'error');
+        return;
+      }
+    }
+
+    console.log('persistState: all tables synced');
+    // Don't show success banner on every commit - too noisy
+  } catch (e) {
+    console.error('persistState fatal error:', e);
+    showBanner(`Persist error: ${e.message}`, 'error');
+  }
 }
 
 // ============================================================================
@@ -1143,6 +1244,65 @@ function migrateState(loaded) {
   });
 
   return migrated;
+}
+
+// ============================================================================
+// SUPABASE MIGRATION (Phase 4 - One-time)
+// ============================================================================
+async function migrateToSupabase() {
+  if (BACKEND !== 'supabase' || !supabase) return false;
+
+  try {
+    // Check if migration has already been done
+    const { data: migrations, error: migError } = await supabase
+      .from('migrations')
+      .select('*')
+      .eq('id', 'initial_localStorage_migration')
+      .single();
+
+    if (migError && migError.code !== 'PGRST116') {
+      // PGRST116 = not found (expected)
+      console.warn('Migration check failed:', migError);
+      return false;
+    }
+
+    if (migrations) {
+      console.log('Migration already completed');
+      return true;
+    }
+
+    // Migration not done yet. Check if we have localStorage data to migrate
+    const localData = localStorage.getItem(STORAGE_KEY);
+    if (!localData) {
+      console.log('No localStorage data to migrate');
+      return true;
+    }
+
+    console.log('Starting one-time migration from localStorage to Supabase...');
+    showBanner('Migrating data to Supabase...', 'info');
+
+    // Use current state (which should be loaded from localStorage at this point)
+    await persistState();
+
+    // Mark migration as done
+    const { error: markError } = await supabase
+      .from('migrations')
+      .insert({ id: 'initial_localStorage_migration', name: 'Initial localStorage migration' });
+
+    if (markError) {
+      console.error('Failed to mark migration complete:', markError);
+      showBanner(`Migration incomplete: ${markError.message}`, 'error');
+      return false;
+    }
+
+    console.log('Migration completed successfully');
+    showBanner('Data migrated to Supabase', 'success');
+    return true;
+  } catch (e) {
+    console.error('Migration error:', e);
+    showBanner(`Migration failed: ${e.message}`, 'error');
+    return false;
+  }
 }
 
 // ============================================================================
@@ -1263,6 +1423,9 @@ async function loadState() {
     if (BACKEND === 'supabase') {
       isReadOnly = true;
       showBanner('Running in read-only mode (offline)', 'error');
+      // Try one-time migration (async, fire-and-forget)
+      console.log('Attempting one-time migration to Supabase...');
+      migrateToSupabase().catch(e => console.error('Migration failed:', e));
     }
 
     return migrated;
@@ -1281,9 +1444,10 @@ function saveState() {
   }
 }
 
-function commit() {
-  saveState();
-  render();
+async function commit() {
+  saveState(); // Always save to localStorage as fallback
+  render(); // Render immediately (optimistic UI)
+  await persistState(); // Then persist to Supabase (Phase 4)
 }
 
 function addShift(date, mix, tons, locations, bridge) {
