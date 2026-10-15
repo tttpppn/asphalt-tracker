@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 2: Round-Trip Test Suite</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #333; }
+    .test-group {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .test-case {
+      margin: 15px 0;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #999;
+    }
+    .test-case.pass {
+      border-left-color: #28a745;
+      background: #d4edda;
+    }
+    .test-case.fail {
+      border-left-color: #dc3545;
+      background: #f8d7da;
+    }
+    .test-name { font-weight: bold; color: #333; }
+    .test-result { color: #666; margin-top: 5px; font-size: 0.9em; }
+    .summary {
+      background: white;
+      border: 2px solid #3498db;
+      padding: 20px;
+      border-radius: 4px;
+      margin-top: 20px;
+      font-size: 1.1em;
+    }
+    .pass-count { color: #28a745; font-weight: bold; }
+    .fail-count { color: #dc3545; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>Phase 2: Round-Trip Test Suite</h1>
+<p>Testing rowsToState() mapping function with edge cases.</p>
+
+<div id="results"></div>
+
+<script>
+// Copy of rowsToState from index.html
+function rowsToState(settingsRow, lotsRows, shiftsRows, samplesRows) {
+  const state = {
+    version: 1,
+    startLotNo: settingsRow?.start_lot_no ?? 100,
+    nextSeq: settingsRow?.next_seq ?? 0,
+    nextLotNo: settingsRow?.next_lot_no ?? 105,
+    lots: [],
+    shifts: [],
+  };
+
+  // Build lots with samples
+  const lotsMap = {};
+  if (lotsRows) {
+    lotsRows.forEach(lotRow => {
+      lotsMap[lotRow.lot_no] = {
+        lotNo: lotRow.lot_no,
+        index: lotRow.idx,
+        mix: lotRow.mix,
+        mixKey: lotRow.mix_key,
+        createdDate: lotRow.created_date,
+        expirationDate: lotRow.expiration_date,
+        samples: [], // Filled below
+      };
+    });
+  }
+
+  // Add samples to lots
+  if (samplesRows) {
+    samplesRows.forEach(sampleRow => {
+      if (lotsMap[sampleRow.lot_no]) {
+        lotsMap[sampleRow.lot_no].samples.push({
+          tonCt: sampleRow.ton_ct !== null ? sampleRow.ton_ct : null,
+          taken: sampleRow.taken ?? false,
+        });
+      }
+    });
+  }
+
+  // Convert lotsMap to array
+  state.lots = Object.values(lotsMap);
+
+  // Convert shifts
+  if (shiftsRows) {
+    state.shifts = shiftsRows.map(row => ({
+      id: row.id,
+      date: row.date,
+      mix: row.mix,
+      tonsCt: row.tons_ct,
+      locations: row.locations || '',
+      bridge: row.bridge_deck ?? false,
+      seq: row.seq,
+    }));
+  }
+
+  return state;
+}
+
+// Test runner
+class TestSuite {
+  constructor(name) {
+    this.name = name;
+    this.tests = [];
+    this.passed = 0;
+    this.failed = 0;
+  }
+
+  test(name, fn) {
+    try {
+      fn();
+      this.tests.push({ name, status: 'pass', error: null });
+      this.passed++;
+    } catch (e) {
+      this.tests.push({ name, status: 'fail', error: e.message });
+      this.failed++;
+    }
+  }
+
+  assertEqual(actual, expected, msg = '') {
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}. ${msg}`);
+    }
+  }
+
+  assertTrue(value, msg = '') {
+    if (value !== true) {
+      throw new Error(`Expected true, got ${value}. ${msg}`);
+    }
+  }
+
+  render() {
+    const div = document.createElement('div');
+    div.className = 'test-group';
+    div.innerHTML = `<h2>${this.name}</h2>`;
+
+    this.tests.forEach(t => {
+      const testDiv = document.createElement('div');
+      testDiv.className = `test-case ${t.status}`;
+      testDiv.innerHTML = `
+        <span class="test-name">${t.status === 'pass' ? '✓' : '✗'} ${t.name}</span>
+        ${t.error ? `<div class="test-result">${t.error}</div>` : ''}
+      `;
+      div.appendChild(testDiv);
+    });
+
+    return div;
+  }
+}
+
+// ============================================================================
+// TEST SUITE A: Basic Settings & Empty Data
+// ============================================================================
+const suiteA = new TestSuite('Suite A: Basic Settings & Empty Data');
+
+suiteA.test('A1: Empty database', function() {
+  const result = rowsToState(null, [], [], []);
+  suiteA.assertEqual(result.startLotNo, 100);
+  suiteA.assertEqual(result.nextSeq, 0);
+  suiteA.assertEqual(result.nextLotNo, 105);
+  suiteA.assertEqual(result.lots.length, 0);
+  suiteA.assertEqual(result.shifts.length, 0);
+});
+
+suiteA.test('A2: Settings with defaults', function() {
+  const settingsRow = { id: 1, start_lot_no: 100, next_seq: 0, next_lot_no: 105 };
+  const result = rowsToState(settingsRow, [], [], []);
+  suiteA.assertEqual(result.startLotNo, 100);
+  suiteA.assertEqual(result.nextSeq, 0);
+  suiteA.assertEqual(result.nextLotNo, 105);
+});
+
+suiteA.test('A3: Settings with custom values', function() {
+  const settingsRow = { id: 1, start_lot_no: 100, next_seq: 42, next_lot_no: 110 };
+  const result = rowsToState(settingsRow, [], [], []);
+  suiteA.assertEqual(result.nextSeq, 42);
+  suiteA.assertEqual(result.nextLotNo, 110);
+});
+
+// ============================================================================
+// TEST SUITE B: Lots with Samples (Decimals & Nulls)
+// ============================================================================
+const suiteB = new TestSuite('Suite B: Lots with Samples (Decimals & Nulls)');
+
+suiteB.test('B1: Simple lot with full samples', function() {
+  const lotsRows = [
+    { lot_no: 100, idx: 0, mix: 'PMA0.5', mix_key: 'pma0.5', created_date: '2026-10-01', expiration_date: '2026-10-31' }
+  ];
+  const samplesRows = [
+    { lot_no: 100, sublot: 1, ton_ct: 500.50, taken: false },
+    { lot_no: 100, sublot: 2, ton_ct: 500.00, taken: true },
+  ];
+  const result = rowsToState(null, lotsRows, [], samplesRows);
+  suiteB.assertEqual(result.lots.length, 1);
+  suiteB.assertEqual(result.lots[0].lotNo, 100);
+  suiteB.assertEqual(result.lots[0].samples.length, 2);
+  suiteB.assertEqual(result.lots[0].samples[0].tonCt, 500.50);
+  suiteB.assertEqual(result.lots[0].samples[1].taken, true);
+});
+
+suiteB.test('B2: Lot with NULL ton_ct (not generated)', function() {
+  const lotsRows = [
+    { lot_no: 101, idx: 1, mix: 'PMA0.5', mix_key: 'pma0.5', created_date: '2026-10-02', expiration_date: '2026-11-01' }
+  ];
+  const samplesRows = [
+    { lot_no: 101, sublot: 1, ton_ct: null, taken: false },
+    { lot_no: 101, sublot: 2, ton_ct: null, taken: false },
+  ];
+  const result = rowsToState(null, lotsRows, [], samplesRows);
+  suiteB.assertEqual(result.lots[0].samples[0].tonCt, null);
+  suiteB.assertEqual(result.lots[0].samples[1].tonCt, null);
+});
+
+suiteB.test('B3: Mixed: some samples with tons, some NULL', function() {
+  const lotsRows = [
+    { lot_no: 102, idx: 2, mix: 'SP22', mix_key: 'sp22', created_date: '2026-10-03', expiration_date: '2026-11-02' }
+  ];
+  const samplesRows = [
+    { lot_no: 102, sublot: 1, ton_ct: 250.75, taken: false },
+    { lot_no: 102, sublot: 2, ton_ct: null, taken: false },
+    { lot_no: 102, sublot: 3, ton_ct: 300.25, taken: true },
+  ];
+  const result = rowsToState(null, lotsRows, [], samplesRows);
+  suiteB.assertEqual(result.lots[0].samples[0].tonCt, 250.75);
+  suiteB.assertEqual(result.lots[0].samples[1].tonCt, null);
+  suiteB.assertEqual(result.lots[0].samples[2].tonCt, 300.25);
+});
+
+suiteB.test('B4: Lot with no samples', function() {
+  const lotsRows = [
+    { lot_no: 103, idx: 3, mix: 'SP22', mix_key: 'sp22', created_date: '2026-10-04', expiration_date: '2026-11-03' }
+  ];
+  const result = rowsToState(null, lotsRows, [], []);
+  suiteB.assertEqual(result.lots[0].samples.length, 0);
+});
+
+// ============================================================================
+// TEST SUITE C: Shifts (Decimals, Empty Fields, Bridge)
+// ============================================================================
+const suiteC = new TestSuite('Suite C: Shifts (Decimals, Empty Fields, Bridge)');
+
+suiteC.test('C1: Simple shift with full data', function() {
+  const shiftsRows = [
+    { id: 'shift-001', date: '2026-10-01', mix: 'PMA0.5', tons_ct: 1500.50, locations: 'North, South', bridge_deck: false, seq: 0 }
+  ];
+  const result = rowsToState(null, [], shiftsRows, []);
+  suiteC.assertEqual(result.shifts.length, 1);
+  suiteC.assertEqual(result.shifts[0].id, 'shift-001');
+  suiteC.assertEqual(result.shifts[0].tonsCt, 1500.50);
+  suiteC.assertEqual(result.shifts[0].locations, 'North, South');
+  suiteC.assertEqual(result.shifts[0].bridge, false);
+});
+
+suiteC.test('C2: Shift with NULL locations', function() {
+  const shiftsRows = [
+    { id: 'shift-002', date: '2026-10-02', mix: 'SP22', tons_ct: 2000.00, locations: null, bridge_deck: false, seq: 1 }
+  ];
+  const result = rowsToState(null, [], shiftsRows, []);
+  suiteC.assertEqual(result.shifts[0].locations, '');
+});
+
+suiteC.test('C3: Shift with bridge_deck=true', function() {
+  const shiftsRows = [
+    { id: 'shift-003', date: '2026-10-03', mix: 'PMA0.5', tons_ct: 500.00, locations: 'Bridge', bridge_deck: true, seq: 2 }
+  ];
+  const result = rowsToState(null, [], shiftsRows, []);
+  suiteC.assertEqual(result.shifts[0].bridge, true);
+});
+
+suiteC.test('C4: Multiple shifts preserve order', function() {
+  const shiftsRows = [
+    { id: 'shift-003', date: '2026-10-03', mix: 'PMA0.5', tons_ct: 500.00, locations: 'A', bridge_deck: false, seq: 2 },
+    { id: 'shift-001', date: '2026-10-01', mix: 'PMA0.5', tons_ct: 1500.50, locations: 'B', bridge_deck: false, seq: 0 },
+    { id: 'shift-002', date: '2026-10-02', mix: 'SP22', tons_ct: 2000.00, locations: 'C', bridge_deck: false, seq: 1 },
+  ];
+  const result = rowsToState(null, [], shiftsRows, []);
+  suiteC.assertEqual(result.shifts.length, 3);
+  suiteC.assertEqual(result.shifts[0].id, 'shift-003');
+  suiteC.assertEqual(result.shifts[1].id, 'shift-001');
+  suiteC.assertEqual(result.shifts[2].id, 'shift-002');
+});
+
+// ============================================================================
+// TEST SUITE D: Large Data Set (Pagination Test)
+// ============================================================================
+const suiteD = new TestSuite('Suite D: Large Data Set (Pagination)');
+
+suiteD.test('D1: Lot with 7 sublots (typical case)', function() {
+  const lotsRows = [
+    { lot_no: 100, idx: 0, mix: 'PMA0.5', mix_key: 'pma0.5', created_date: '2026-10-01', expiration_date: '2026-10-31' }
+  ];
+  const samplesRows = [];
+  for (let i = 1; i <= 7; i++) {
+    samplesRows.push({ lot_no: 100, sublot: i, ton_ct: 500.00, taken: false });
+  }
+  const result = rowsToState(null, lotsRows, [], samplesRows);
+  suiteD.assertEqual(result.lots[0].samples.length, 7);
+});
+
+suiteD.test('D2: 30 lots with 7 sublots each (210 samples)', function() {
+  const lotsRows = [];
+  const samplesRows = [];
+  for (let lot = 100; lot < 130; lot++) {
+    lotsRows.push({
+      lot_no: lot,
+      idx: lot - 100,
+      mix: lot % 2 === 0 ? 'PMA0.5' : 'SP22',
+      mix_key: lot % 2 === 0 ? 'pma0.5' : 'sp22',
+      created_date: '2026-10-01',
+      expiration_date: '2026-10-31'
+    });
+    for (let sublot = 1; sublot <= 7; sublot++) {
+      samplesRows.push({
+        lot_no: lot,
+        sublot: sublot,
+        ton_ct: 500.00,
+        taken: false
+      });
+    }
+  }
+  const result = rowsToState(null, lotsRows, [], samplesRows);
+  suiteD.assertEqual(result.lots.length, 30);
+  suiteD.assertTrue(result.lots.every(l => l.samples.length === 7), 'All lots have 7 samples');
+});
+
+// ============================================================================
+// TEST SUITE E: Complex Round-Trip (Realistic Scenario)
+// ============================================================================
+const suiteE = new TestSuite('Suite E: Complex Round-Trip (Realistic Scenario)');
+
+suiteE.test('E1: Realistic mixed state with 3 lots, 3 shifts', function() {
+  const settingsRow = { id: 1, start_lot_no: 100, next_seq: 3, next_lot_no: 106 };
+  const lotsRows = [
+    { lot_no: 100, idx: 0, mix: 'PMA0.5', mix_key: 'pma0.5', created_date: '2026-09-15', expiration_date: '2026-10-15' },
+    { lot_no: 103, idx: 1, mix: 'SP22', mix_key: 'sp22', created_date: '2026-10-01', expiration_date: '2026-10-31' },
+    { lot_no: 104, idx: 2, mix: 'PMA0.5', mix_key: 'pma0.5', created_date: '2026-10-10', expiration_date: '2026-11-09' },
+  ];
+  const shiftsRows = [
+    { id: 'shift-1', date: '2026-10-01', mix: 'PMA0.5', tons_ct: 1500.50, locations: 'North', bridge_deck: false, seq: 0 },
+    { id: 'shift-2', date: '2026-10-05', mix: 'SP22', tons_ct: 2000.00, locations: 'South, East', bridge_deck: false, seq: 1 },
+    { id: 'shift-3', date: '2026-10-10', mix: 'PMA0.5', tons_ct: 1200.75, locations: null, bridge_deck: true, seq: 2 },
+  ];
+  const samplesRows = [
+    { lot_no: 100, sublot: 1, ton_ct: 500.00, taken: true },
+    { lot_no: 100, sublot: 2, ton_ct: 500.00, taken: false },
+    { lot_no: 100, sublot: 3, ton_ct: null, taken: false },
+    { lot_no: 103, sublot: 1, ton_ct: null, taken: false },
+    { lot_no: 103, sublot: 2, ton_ct: null, taken: false },
+    { lot_no: 104, sublot: 1, ton_ct: 500.00, taken: true },
+    { lot_no: 104, sublot: 2, ton_ct: 500.00, taken: true },
+  ];
+
+  const result = rowsToState(settingsRow, lotsRows, shiftsRows, samplesRows);
+  suiteE.assertEqual(result.nextSeq, 3);
+  suiteE.assertEqual(result.nextLotNo, 106);
+  suiteE.assertEqual(result.lots.length, 3);
+  suiteE.assertEqual(result.shifts.length, 3);
+  suiteE.assertEqual(result.lots[0].samples[0].taken, true);
+  suiteE.assertEqual(result.lots[1].samples[0].tonCt, null);
+  suiteE.assertEqual(result.shifts[2].bridge, true);
+  suiteE.assertEqual(result.shifts[2].locations, '');
+});
+
+// ============================================================================
+// RUN ALL TESTS
+// ============================================================================
+function runAllTests() {
+  const allSuites = [suiteA, suiteB, suiteC, suiteD, suiteE];
+  const resultsDiv = document.getElementById('results');
+
+  allSuites.forEach(suite => {
+    resultsDiv.appendChild(suite.render());
+  });
+
+  // Summary
+  const totalPassed = allSuites.reduce((sum, s) => sum + s.passed, 0);
+  const totalFailed = allSuites.reduce((sum, s) => sum + s.failed, 0);
+  const totalTests = totalPassed + totalFailed;
+
+  const summary = document.createElement('div');
+  summary.className = 'summary';
+  summary.innerHTML = `
+    <strong>Test Summary</strong><br>
+    Total: ${totalTests} | <span class="pass-count">Passed: ${totalPassed}</span> | <span class="fail-count">Failed: ${totalFailed}</span><br>
+    <br>
+    ${totalFailed === 0 ? '✓ All tests passed! Ready for Phase 3.' : '✗ Some tests failed. Review above.'}
+  `;
+  resultsDiv.appendChild(summary);
+
+  console.log(`Phase 2 Results: ${totalPassed}/${totalTests} passed`);
+}
+
+// Run tests on load
+window.addEventListener('DOMContentLoaded', runAllTests);
+</script>
+
+</body>
+</html>
