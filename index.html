@@ -7,96 +7,308 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
-      color: #333;
-      background: #f9f9f9;
-      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      color: #2c3e50;
+      background: #ecf0f1;
+      padding: 20px;
     }
     .container { max-width: 1600px; margin: 0 auto; }
 
-    h1 { font-size: 1.2rem; margin-bottom: 0.5rem; }
-    h2 { font-size: 1rem; margin: 1rem 0 0.5rem 0; font-weight: 600; }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: #1a5490;
+      font-weight: 700;
+    }
+    h2 {
+      font-size: 1.2rem;
+      margin: 1.2rem 0 0.8rem 0;
+      font-weight: 600;
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 0.4rem;
+    }
 
     .banner {
-      padding: 12px; margin-bottom: 16px; border-radius: 4px;
-      background: #fff3cd; border-left: 4px solid #ff9800;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      background: #fff3cd;
+      border-left: 5px solid #ff9800;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .banner.error { background: #f8d7da; border-left-color: #dc3545; color: #721c24; }
-    .banner.success { background: #d4edda; border-left-color: #28a745; color: #155724; }
+    .banner.error { background: #f8d7da; border-left-color: #dc3545; color: #721c24; font-weight: 500; }
+    .banner.success { background: #d4edda; border-left-color: #28a745; color: #155724; font-weight: 500; }
 
     .summary-box {
-      background: white; padding: 16px; margin-bottom: 16px;
-      border: 1px solid #ddd; border-radius: 4px;
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    .summary-line { margin: 0.5rem 0; font-size: 0.95rem; }
-    .summary-line strong { display: inline-block; min-width: 120px; }
+    .summary-line {
+      margin: 0.8rem 0;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .summary-line strong {
+      display: inline-block;
+      min-width: 140px;
+      color: #34495e;
+      font-weight: 600;
+    }
+    .summary-line span {
+      color: #2c3e50;
+    }
 
-    .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
     @media (max-width: 1100px) {
       .wrap { grid-template-columns: 1fr; }
     }
 
     section {
-      background: white; padding: 16px; border: 1px solid #ddd;
-      border-radius: 4px; overflow-x: auto;
+      background: white;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow-x: auto;
     }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+    table th:nth-child(3),
+    table td:nth-child(3) {
+      min-width: 100px;
+      text-align: center;
+    }
     th {
-      background: #f5f5f5; border: 1px solid #ddd; padding: 8px;
-      text-align: left; font-weight: 600; font-size: 0.85rem;
+      background: #ecf0f1;
+      border: 1px solid #bdc3c7;
+      padding: 12px 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #2c3e50;
     }
-    td { border: 1px solid #ddd; padding: 8px; }
-    tbody tr:nth-child(even) { background: #f9f9f9; }
-
-    .lot-header { background: #e8f4f8; font-weight: 600; }
-    .lot-header td { border-bottom: 2px solid #b3d9e8; }
-
-    input[type="text"], input[type="number"], input[type="date"], select {
-      font-family: inherit; font-size: 0.9rem; padding: 6px;
-      border: 1px solid #ccc; border-radius: 3px;
+    td {
+      border: 1px solid #ecf0f1;
+      padding: 10px 8px;
+      color: #2c3e50;
     }
-    input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus {
-      outline: none; border-color: #0066cc; box-shadow: 0 0 4px rgba(0,102,204,0.3);
+    tbody tr:hover { background: #f8f9fa; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+
+    .lot-header {
+      background: #d6eaf8;
+      font-weight: 600;
+      color: #1a5490;
+    }
+    .lot-header td {
+      border-bottom: 2px solid #3498db;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      border: 1px solid #bdc3c7;
+      border-radius: 4px;
+      background: white;
+      transition: all 0.2s ease;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
     }
 
     button {
-      background: #0066cc; color: white; border: none; padding: 8px 16px;
-      border-radius: 3px; cursor: pointer; font-size: 0.9rem; margin-right: 8px; margin-bottom: 8px;
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      transition: all 0.2s ease;
     }
-    button:hover { background: #0052a3; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    button.secondary { background: #666; }
-    button.secondary:hover { background: #555; }
-    button.danger { background: #dc3545; }
-    button.danger:hover { background: #c82333; }
+    button:hover { background: #2980b9; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    button:active { transform: translateY(0); }
+    button:disabled { background: #95a5a6; cursor: not-allowed; }
+    button.secondary {
+      background: #7f8c8d;
+      color: white;
+    }
+    button.secondary:hover { background: #6c7a7c; }
+    button.danger {
+      background: #e74c3c;
+      color: white;
+    }
+    button.danger:hover { background: #c0392b; }
 
-    .warning { color: #dc3545; font-size: 0.85rem; margin-top: 2px; }
-    .sublot-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .warning {
+      color: #e74c3c;
+      font-size: 0.85rem;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .sublot-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
     .sublot-form input { width: 80px; }
 
-    .shift-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-    .shift-form input, .shift-form select { flex: 0 0 auto; }
-    .shift-form input[type="text"] { flex: 0 0 150px; }
+    .shift-form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+    .shift-form input,
+    .shift-form select {
+      flex: 0 0 auto;
+    }
+    .shift-form input[type="text"],
+    .shift-form input[type="date"],
+    .shift-form input[type="number"] {
+      flex: 0 0 auto;
+    }
 
-    .status-pending { background: #f0f0f0; }
-    .status-due { background: #ffe6e6; }
-    .status-taken { background: #d4edda; }
+    .status-pending {
+      background: #ecf0f1;
+      color: #7f8c8d;
+      font-weight: 500;
+    }
+    .status-due {
+      background: #fadbd8;
+      color: #c0392b;
+      font-weight: 500;
+    }
+    .status-taken {
+      background: #d5f4e6;
+      color: #27ae60;
+      font-weight: 500;
+    }
 
-    .split-note { font-size: 0.85rem; color: #666; margin-top: 4px; padding: 4px 8px; background: #f5f5f5; border-left: 3px solid #ff9800; }
+    .split-note {
+      font-size: 0.85rem;
+      color: #7f8c8d;
+      margin-top: 6px;
+      padding: 8px 12px;
+      background: #fff3cd;
+      border-left: 4px solid #ff9800;
+      border-radius: 3px;
+    }
 
-    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-    .controls label { margin-right: 12px; }
-    .controls input[type="checkbox"] { margin-right: 4px; cursor: pointer; }
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .controls label {
+      margin-right: 8px;
+      font-weight: 500;
+      color: #2c3e50;
+    }
+    .controls input[type="checkbox"] {
+      margin-right: 6px;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+    }
 
-    .footer { text-align: center; padding: 16px; font-size: 0.85rem; color: #666; }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.85rem;
+      color: #7f8c8d;
+      background: white;
+      border-top: 1px solid #ddd;
+      margin-top: 20px;
+    }
+    .footer code {
+      background: #ecf0f1;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 0.8rem;
+    }
 
     .regen-warning {
-      background: #fff3cd; border: 1px solid #ffc107; padding: 8px;
-      border-radius: 3px; margin-bottom: 8px; font-size: 0.85rem;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 10px 12px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+      color: #856404;
+      font-weight: 500;
+    }
+
+    /* MOBILE RESPONSIVE */
+    @media (max-width: 768px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.4rem; }
+      .wrap { grid-template-columns: 1fr; gap: 12px; }
+      section { padding: 12px; }
+
+      table thead { display: none; }
+      table tr { display: block; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 12px; padding: 12px; background: white; }
+      table td { display: block; border: none; padding: 8px 0; text-align: left; }
+      table td:before { content: attr(data-label); font-weight: 600; color: #34495e; display: block; font-size: 0.8rem; margin-bottom: 4px; }
+
+      .lot-header { background: #d6eaf8 !important; }
+      .lot-header td { border: none !important; }
+      .lot-header td:before { display: none; }
+
+      .shift-form { flex-direction: column; gap: 12px; }
+      .shift-form input, .shift-form select { width: 100% !important; }
+
+      .controls { flex-direction: column; }
+      .controls button { width: 100%; }
+
+      input[type="date"], input[type="text"], input[type="number"], select { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 8px; }
+      h1 { font-size: 1.2rem; }
+      section { padding: 8px; }
+      table tr { padding: 8px; margin-bottom: 8px; }
+      button { padding: 8px 12px; font-size: 0.85rem; }
     }
   </style>
+
+  <!-- Supabase Client Library (pinned 2.38.0) -->
+  <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0"></script>
 </head>
 <body>
 
@@ -137,8 +349,6 @@
             <th>Sample Ton</th>
             <th>Mix</th>
             <th>Date</th>
-            <th>Taken</th>
-            <th>Status</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -172,7 +382,9 @@
         <tbody></tbody>
       </table>
     </section>
+  </div>
 
+  <section>
     <h2>Annual Summary</h2>
     <table id="annualSummaryTable">
       <thead>
@@ -185,10 +397,11 @@
       </thead>
       <tbody></tbody>
     </table>
-  </div>
+  </section>
 
   <div class="controls">
     <button id="exportCsvBtn" class="secondary">Export CSV</button>
+    <button id="importCsvBtn" class="secondary">Import CSV (Shifts)</button>
     <button id="exportJsonBtn" class="secondary">Export JSON</button>
     <button id="importJsonBtn" class="secondary">Import JSON</button>
     <button id="selfTestBtn" class="secondary">Self-Test</button>
@@ -214,6 +427,14 @@ const SUBLOT_TONS = 500;
 const SUBLOTS_PER_LOT = 7;
 const WINDOW_DAYS = 30;
 const STORAGE_KEY = 'pwlTracker.v1';
+
+// ============================================================================
+// SUPABASE CONFIGURATION (Phase 1)
+// ============================================================================
+const BACKEND = 'local'; // 'local' or 'supabase' — flip this to enable Supabase
+const SUPABASE_URL = ''; // Add your Supabase project URL here
+const SUPABASE_ANON_KEY = ''; // Add your anon key here
+let supabase = null; // Initialized after page load if BACKEND='supabase'
 
 // ============================================================================
 // UTILITIES
@@ -431,8 +652,9 @@ function reconcileLots(state, ledgers, today = new Date()) {
     const existing = lotsForMix[key];
 
     let requiredIndex = -1;
-    let currentLotCreatedDate = null;
-    const lotCreatedByShift = {}; // Track which shift created each lot index
+    let currentWindowStart = null;  // Track the 30-day window start date
+    const lotWindowStart = {};      // Map index to window start date
+    const lotCreatedByShift = {};   // Track which shift created each lot index
 
     for (const entry of ledger) {
       if (entry.excluded) continue;
@@ -441,15 +663,32 @@ function reconcileLots(state, ledgers, today = new Date()) {
       const neededByTonnage = Math.ceil(entry.afterCt / toCt(LOT_TONS)) - 1;
       let neededByTime = neededByTonnage;
 
-      if (currentLotCreatedDate && daysBetween(currentLotCreatedDate, shiftDate) >= WINDOW_DAYS) {
+      // Check: Is it 30+ days since window start? If so, start NEW window
+      if (currentWindowStart && daysBetween(currentWindowStart, shiftDate) >= WINDOW_DAYS) {
         neededByTime = requiredIndex + 1;
-        currentLotCreatedDate = shiftDate;
-        lotCreatedByShift[neededByTime] = entry.shift.date;
-      } else if (currentLotCreatedDate === null) {
-        currentLotCreatedDate = shiftDate;
+        currentWindowStart = shiftDate;  // New window starts at this shift date
+        lotWindowStart[neededByTime] = shiftDate;
+        lotCreatedByShift[neededByTime] = entry.shift.date;  // Store the date string, not Date object
+      } else if (currentWindowStart === null) {
+        currentWindowStart = shiftDate;  // First window
+        lotWindowStart[0] = shiftDate;
+      }
+
+      // Assign windowStartDate to all lots needed by tonnage in this window
+      for (let idx = requiredIndex + 1; idx <= neededByTime; idx++) {
+        if (!lotWindowStart[idx]) {
+          lotWindowStart[idx] = currentWindowStart;  // All lots in same window get same windowStartDate
+        }
       }
 
       requiredIndex = Math.max(requiredIndex, neededByTime);
+    }
+
+    // Safety check: cap lots to prevent infinite creation (max 20 lots per mix)
+    const maxLotsAllowed = 20;
+    if (requiredIndex >= maxLotsAllowed) {
+      console.error(`⚠ WARNING: Lot creation would exceed ${maxLotsAllowed} lots. This suggests a data issue. Check shifts for the mix: ${key}`);
+      requiredIndex = maxLotsAllowed - 1;
     }
 
     for (let idx = 0; idx <= requiredIndex; idx++) {
@@ -469,6 +708,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
       const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
       const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : lotCreatedByShift[idx] || fmtLocalDate(today);
+      const windowStart = lotWindowStart[idx] ? fmtLocalDate(lotWindowStart[idx]) : lotDate;
 
       const newLot = {
         lotNo: nextLotNo,
@@ -477,7 +717,8 @@ function reconcileLots(state, ledgers, today = new Date()) {
         index: idx,
         createdBy: 'auto',
         createdDate: lotDate,
-        expirationDate: addDays(lotDate, WINDOW_DAYS),
+        windowStartDate: windowStart,  // Track which 30-day window this lot belongs to
+        expirationDate: addDays(windowStart, WINDOW_DAYS),  // Expiration is window start + 30 days
         samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
       };
       state.nextLotNo = nextLotNo + 1;
@@ -491,8 +732,9 @@ function reconcileLots(state, ledgers, today = new Date()) {
 // SPLIT CALCULATION
 // ============================================================================
 function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, today = new Date()) {
-  console.log(`\n=== splitShiftAcrossLots ===`);
-  console.log(`shiftDate: ${shiftDate}, beforeCt: ${beforeCt/100}t, afterCt: ${afterCt/100}t, remaining: ${(afterCt-beforeCt)/100}t`);
+  const shiftTons = (afterCt - beforeCt) / 100;
+  console.log(`\n=== splitShiftAcrossLots (ROLLING 30-DAY WINDOW) ===`);
+  console.log(`shiftDate: ${shiftDate}, shift tonnage: ${shiftTons}t`);
   console.log(`lotsForMix count: ${lotsForMix.length}`);
 
   if (lotsForMix.length === 0) {
@@ -500,96 +742,68 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
     return [];
   }
 
-  const sorted = [...lotsForMix].sort((a, b) => a.index - b.index);
+  const shiftD = parseLocalDate(shiftDate);
 
-  // First pass: collect all non-full lots (capacity only; age does not block allocation)
-  const activeLotsIndices = new Set();
-  sorted.forEach(lot => {
-    const lotRange = lotRangeCt(lot);
-    console.log(`\nLot ${lot.lotNo} (index ${lot.index}): range [${lotRange.start/100}t, ${lotRange.end/100}t)`);
-    console.log(`  createdDate: ${lot.createdDate}`);
-
-    // Only check: Is lot full? (at or past 3500 tons capacity)
-    const lotIsFull = (lotRange.end - lotRange.start) <= 0;
-    if (lotIsFull) {
-      console.log(`  ✗ FULL (at 3500t capacity)`);
-    } else {
-      console.log(`  ✓ ACTIVE (has capacity)`);
-      activeLotsIndices.add(lot.index);
-    }
+  // Sort by creation date (earliest first), then lot number
+  const sorted = [...lotsForMix].sort((a, b) => {
+    const dateA = parseLocalDate(a.createdDate);
+    const dateB = parseLocalDate(b.createdDate);
+    if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+    return a.lotNo - b.lotNo;
   });
 
-  console.log(`\nActive lots: ${Array.from(activeLotsIndices).join(', ') || 'NONE'}`);
-  const lotsToUse = activeLotsIndices.size > 0 ? activeLotsIndices : null;
-  console.log(`Using filter: ${lotsToUse ? 'non-expired only' : 'all lots (fallback)'}`);
+  // Calculate current tonnage in each lot based on beforeCt and lot capacity
+  let cumulativeSoFar = 0;
+  const lotTonnage = {};
 
-  // Second pass: allocate shift tonnage, skipping expired lots
-  // If a lot expires, allocate its remaining tonnage to the next active lot
-  const result = [];
-  let remaining = afterCt - beforeCt;
-
-  sorted.forEach(lot => {
-    if (remaining <= 0) return;
-
-    const lotRange = lotRangeCt(lot);
-    console.log(`\n  Processing Lot ${lot.lotNo}:`);
-
-    // Check if expired
-    const isExpired = lotsToUse && !lotsToUse.has(lot.index);
-    if (isExpired) {
-      console.log(`    SKIP: EXPIRED - closed to new tonnage`);
-      return;
-    }
-
-    // Calculate intersection of shift range [beforeCt, afterCt) with this lot's range
-    const allocStart = Math.max(beforeCt, lotRange.start);
-    const allocEnd = Math.min(afterCt, lotRange.end);
-
-    if (allocEnd > allocStart) {
-      const allocation = allocEnd - allocStart;
-      console.log(`    ✓ ACTIVE LOT - allocating ${allocation/100}t to Lot ${lot.lotNo}`);
-      result.push({ lotNo: lot.lotNo, ct: allocation });
-      remaining -= allocation;
-    } else if (beforeCt >= lotRange.end) {
-      console.log(`    SKIP: beyond this lot's range`);
+  for (const lot of sorted) {
+    const lotCapacity = toCt(LOT_TONS);
+    if (cumulativeSoFar >= beforeCt) {
+      lotTonnage[lot.lotNo] = 0;
     } else {
-      console.log(`    SKIP: not yet in this lot's range`);
-    }
-  });
-
-  // Fallback: if tonnage remains after checking all lots,
-  // find which lot should have received it and allocate to next active lot
-  if (remaining > 0 && lotsToUse && lotsToUse.size > 0) {
-    // Determine which lot's range the remaining tonnage should occupy
-    const shiftRangeStart = beforeCt + ((afterCt - beforeCt) - remaining);
-    let targetLotForRemainder = null;
-
-    for (const lot of sorted) {
-      const lotRange = lotRangeCt(lot);
-      if (shiftRangeStart < lotRange.end) {
-        targetLotForRemainder = lot;
-        break;
-      }
-    }
-
-    // If target lot is expired, allocate to next non-expired lot instead
-    if (targetLotForRemainder) {
-      const isTargetExpired = lotsToUse && !lotsToUse.has(targetLotForRemainder.index);
-      const finalLot = isTargetExpired
-        ? sorted.find(l => l.index > targetLotForRemainder.index && lotsToUse.has(l.index))
-        : (lotsToUse.has(targetLotForRemainder.index) ? targetLotForRemainder : null);
-
-      if (finalLot && !result.find(r => r.lotNo === finalLot.lotNo)) {
-        const action = isTargetExpired ? 'RENEWAL (expired lot → next active)' : 'ACTIVE LOT';
-        console.log(`\n  ${action}: Allocating remaining ${remaining/100}t to Lot ${finalLot.lotNo}`);
-        result.push({ lotNo: finalLot.lotNo, ct: remaining });
-        remaining = 0;
-      }
+      lotTonnage[lot.lotNo] = Math.min(beforeCt - cumulativeSoFar, lotCapacity);
+      cumulativeSoFar += lotTonnage[lot.lotNo];
     }
   }
 
+  const result = [];
+  let remaining = shiftTons;
+
+  for (const lot of sorted) {
+    if (remaining <= 0) break;
+
+    const currentTonnage = (lotTonnage[lot.lotNo] || 0) / 100;
+    const availableCapacity = LOT_TONS - currentTonnage;
+
+    console.log(`\n  Lot ${lot.lotNo}:`);
+    console.log(`    Current tonnage: ${currentTonnage}t, Available capacity: ${availableCapacity}t`);
+    console.log(`    Created: ${lot.createdDate}, Window: ${lot.windowStartDate || 'N/A'}, Expires: ${lot.expirationDate}`);
+
+    // Check if lot is within active 30-day window
+    // windowStartDate = date the 30-day window began (rolling window)
+    // expirationDate = windowStartDate + 30 days (end of active window)
+    const windowStart = lot.windowStartDate ? parseLocalDate(lot.windowStartDate) : parseLocalDate(lot.createdDate);
+    const windowEnd = lot.expirationDate ? parseLocalDate(lot.expirationDate) : parseLocalDate(addDays(lot.createdDate, WINDOW_DAYS));
+
+    if (shiftD < windowStart || shiftD > windowEnd) {
+      console.log(`    SKIP: OUTSIDE 30-DAY WINDOW [${fmtLocalDate(windowStart)} to ${fmtLocalDate(windowEnd)}]`);
+      continue;
+    }
+
+    if (availableCapacity <= 0) {
+      console.log(`    SKIP: FULL (${currentTonnage}t)`);
+      continue;
+    }
+
+    // Allocate what we can to this lot
+    const allocation = Math.min(remaining, availableCapacity);
+    console.log(`    ✓ Allocating ${allocation}t to Lot ${lot.lotNo}`);
+    result.push({ lotNo: lot.lotNo, ct: toCt(allocation) });
+    remaining -= allocation;
+  }
+
   if (remaining > 0) {
-    console.log(`\n⚠ WARNING: ${remaining/100}t unallocated (no active lots available)`);
+    console.log(`\n⚠ WARNING: ${remaining}t unallocated (no lots in active window with capacity)`);
   }
 
   console.log(`\nFinal result: ${result.length} lots, splits:`, result.map(r => `Lot${r.lotNo}:${r.ct/100}t`).join(', '));
@@ -642,7 +856,6 @@ function findSampleDate(ledger, sampleCt, lot) {
 }
 
 function sampleStatus(totalCt, sampleCt, taken) {
-  if (sampleCt === null) return 'Pending (not generated)';
   if (taken) return 'Taken';
   if (totalCt >= sampleCt) return 'Due';
   return 'Pending';
@@ -770,17 +983,13 @@ function derive(state, today = new Date()) {
 
     lot.samples.forEach((sample, idx) => {
       const n = idx + 1;
+
+      // Only show samples that were actually generated
+      if (sample.tonCt === null) return;
+
       const range = sublotRangeCt(lot, n);
-
-      let sampleDate = null;
-      let status = 'Pending';
-
-      if (sample.tonCt !== null) {
-        // Samples are now stored as RELATIVE values (0-3500), not absolute
-        sampleDate = findSampleDate(lotLedger, sample.tonCt, lot);
-        status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
-      }
-
+      const sampleDate = findSampleDate(lotLedger, sample.tonCt, lot);
+      const status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
       const windowInfo = lotWindow(lot, ledger, today);
 
       sampleRows.push({
@@ -823,6 +1032,76 @@ function derive(state, today = new Date()) {
   });
 
   return { shiftRows, sampleRows, summary };
+}
+
+// ============================================================================
+// SUPABASE MAPPING (Phase 1 - Pure Functions)
+// ============================================================================
+
+// Convert raw Supabase rows to app state format
+function rowsToState(settingsRow, lotsRows, shiftsRows, samplesRows) {
+  const state = {
+    version: 1,
+    startLotNo: settingsRow?.start_lot_no ?? 100,
+    nextSeq: settingsRow?.next_seq ?? 0,
+    nextLotNo: settingsRow?.next_lot_no ?? 105,
+    lots: [],
+    shifts: [],
+  };
+
+  // Build lots with samples
+  const lotsMap = {};
+  if (lotsRows) {
+    lotsRows.forEach(lotRow => {
+      lotsMap[lotRow.lot_no] = {
+        lotNo: lotRow.lot_no,
+        index: lotRow.idx,
+        mix: lotRow.mix,
+        mixKey: lotRow.mix_key,
+        createdDate: lotRow.created_date,
+        expirationDate: lotRow.expiration_date,
+        samples: [], // Filled below
+      };
+    });
+  }
+
+  // Add samples to lots
+  if (samplesRows) {
+    samplesRows.forEach(sampleRow => {
+      if (lotsMap[sampleRow.lot_no]) {
+        lotsMap[sampleRow.lot_no].samples.push({
+          tonCt: sampleRow.ton_ct !== null ? sampleRow.ton_ct : null,
+          taken: sampleRow.taken ?? false,
+        });
+      }
+    });
+  }
+
+  // Convert lotsMap to array
+  state.lots = Object.values(lotsMap);
+
+  // Convert shifts
+  if (shiftsRows) {
+    state.shifts = shiftsRows.map(row => ({
+      id: row.id,
+      date: row.date,
+      mix: row.mix,
+      tonsCt: row.tons_ct,
+      locations: row.locations || '',
+      bridge: row.bridge_deck ?? false,
+      seq: row.seq,
+    }));
+  }
+
+  return state;
+}
+
+// Convert state to insert/update format for Supabase (Phase 4)
+// Placeholder for Phase 4
+async function persistState() {
+  if (BACKEND !== 'supabase' || !supabase) return;
+  // Phase 4: Implement actual persistence
+  console.log('persistState: placeholder for Phase 4');
 }
 
 // ============================================================================
@@ -906,6 +1185,25 @@ function addShift(date, mix, tons, locations, bridge) {
     return;
   }
 
+  console.log(`addShift called: date=${date}, mix=${mix}, tons=${tons}`);
+
+  // SAFEGUARD: Block duplicate rapid submissions (< 50ms apart with same data)
+  const now = Date.now();
+  const currentData = `${date}|${mix}|${tons}`;
+  if (addShift.lastTime && now - addShift.lastTime < 50 && addShift.lastData === currentData) {
+    console.warn(`⚠ DUPLICATE BLOCKED: Same shift twice within 50ms`);
+    return;
+  }
+  addShift.lastTime = now;
+  addShift.lastData = currentData;
+
+  // Validate date format (must be YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    showBanner(`Invalid date format. Expected YYYY-MM-DD, got: ${date}`, 'error');
+    console.error(`Date format error: ${date}`);
+    return;
+  }
+
   state.shifts.push({
     id: 'shift_' + Date.now() + '_' + Math.random(),
     seq: state.nextSeq++,
@@ -915,6 +1213,7 @@ function addShift(date, mix, tons, locations, bridge) {
     locations: (locations || '').trim(),
     bridge: !!bridge
   });
+  console.log(`✓ Shift added successfully. Total shifts: ${state.shifts.length}`);
   commit();
 }
 
@@ -999,20 +1298,6 @@ function generateSamples(lotNo, seed = null) {
   commit();
   const lotAfterCommit = state.lots.find(l => l.lotNo === lotNo);
   console.log(`AFTER commit: lotAfterCommit.samples=`, lotAfterCommit?.samples.map(s => s.tonCt));
-  render();
-}
-
-function regenerateSamples(lotNo, seed = null) {
-  const lot = state.lots.find(l => l.lotNo === lotNo);
-  if (!lot) return;
-
-  const rng = seed !== null ? mulberry32(seed) : Math.random;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const samples = generateSampleTons(lot, state, rng, today);
-
-  lot.samples = samples;
-  commit();
   render();
 }
 
@@ -1142,22 +1427,12 @@ function renderSamplingTable(derived) {
       currentLot = row.lot.lotNo;
       const lot = row.lot;
 
-      const canRegen = !row.lot.samples.some(s => {
-        if (s.tonCt === null) return false;
-        const sts = sampleStatus(row.mixTotal, s.tonCt, s.taken);
-        return sts === 'Due' || sts === 'Taken';
-      });
-
       let headerHtml = `<tr class="lot-header">
         <td colspan="8">
           <strong>Lot ${lot.lotNo} (${lot.mix}, index ${lot.index})</strong>
           <button class="secondary" style="margin-left: 16px; padding: 4px 8px; font-size: 0.8rem;" onclick="generateSamples(${lot.lotNo})">
             Generate samples
           </button>`;
-
-      if (canRegen) {
-        headerHtml += `<button class="secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="if (confirm('Replace all 7 samples?')) regenerateSamples(${lot.lotNo})">Regenerate</button>`;
-      }
 
       headerHtml += `<button class="danger" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 8px;" onclick="deleteLot(${lot.lotNo})">Delete Lot</button>`;
 
@@ -1176,7 +1451,7 @@ function renderSamplingTable(derived) {
 
     let sampleInput = 'Not generated';
     if (sample.tonCt !== null) {
-      sampleInput = `<input type="number" value="${sample.tonCt / 100}" step="1" min="0" style="width: 60px;" onchange="editSample(${row.lot.lotNo}, ${row.sublot}, Math.round(this.value * 100))">`;
+      sampleInput = `<input type="number" value="${sample.tonCt / 100}" step="1" min="0" style="width: 120px;" onchange="editSample(${row.lot.lotNo}, ${row.sublot}, Math.round(this.value * 100))">`;
     }
 
     tbody.innerHTML += `<tr class="${statusClass}">
@@ -1185,8 +1460,6 @@ function renderSamplingTable(derived) {
       <td>${sampleInput}${warning}</td>
       <td>${row.lot.mix}</td>
       <td>${row.sampleDate || '—'}</td>
-      <td><input type="checkbox" ${sample.taken ? 'checked' : ''} ${takenDisabled} onchange="toggleTaken(${row.lot.lotNo}, ${row.sublot})"></td>
-      <td>${row.status}</td>
     </tr>`;
   });
 }
@@ -1316,32 +1589,66 @@ function editShiftUI(id) {
 // ============================================================================
 function exportCSV() {
   const derived = derive(state);
+  let csv = '';
 
-  let csv = 'Lot,Sublot,Sample Tons,Mix,Date,Taken,Status\n';
+  // Sampling Data
+  csv += 'SAMPLING TRACKER\n';
+  csv += 'Lot,Sublot,Sample Tons,Mix,Date,Taken,Status\n';
   derived.sampleRows.forEach(row => {
     csv += `${row.lot.lotNo},${row.sublot},${row.sample.tonCt === null ? '' : row.sample.tonCt / 100},${escapeCSV(row.lot.mix)},${row.sampleDate || ''},${row.sample.taken ? 'Yes' : ''},${escapeCSV(row.status)}\n`;
   });
 
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'sampling.csv';
-  a.click();
-  URL.revokeObjectURL(url);
+  // Blank line separator
+  csv += '\n\n';
 
-  csv = 'Date,Mix,Shift Tons,Total Lot Tons,Bridge\n';
+  // Shift Log
+  csv += 'SHIFT LOG\n';
+  csv += 'Date,Mix,Shift Tons,Total Lot Tons,Bridge\n';
   derived.shiftRows.forEach(row => {
-    csv += `${row.shift.date},${escapeCSV(row.shift.mix)},${row.shift.tonsCt},${fmtTons(row.mixTotal)},${row.shift.bridge ? 'Yes' : ''}\n`;
+    csv += `${row.shift.date},${escapeCSV(row.shift.mix)},${fmtTons(row.shift.tonsCt)},${fmtTons(row.mixTotal)},${row.shift.bridge ? 'Yes' : ''}\n`;
   });
 
-  const blob2 = new Blob([csv], { type: 'text/csv' });
-  const url2 = URL.createObjectURL(blob2);
-  const a2 = document.createElement('a');
-  a2.href = url2;
-  a2.download = 'shifts.csv';
-  a2.click();
-  URL.revokeObjectURL(url2);
+  // Blank line separator
+  csv += '\n\n';
+
+  // Annual Summary
+  csv += 'ANNUAL SUMMARY\n';
+  const totals = {};
+  state.shifts.forEach(shift => {
+    if (shift.bridge) return;
+    const year = shift.date.split('-')[0];
+    const mix = normMix(shift.mix);
+    if (!totals[year]) totals[year] = {};
+    totals[year][mix] = (totals[year][mix] || 0) + shift.tonsCt;
+  });
+
+  const allMixes = [...new Set(state.shifts.filter(s => !s.bridge).map(s => normMix(s.mix)))].sort();
+  const mixNames = {};
+  state.shifts.forEach(s => {
+    if (!s.bridge) mixNames[normMix(s.mix)] = s.mix;
+  });
+
+  csv += 'Year,' + allMixes.map(mix => escapeCSV(mixNames[mix] || mix)).join(',') + '\n';
+  Object.keys(totals).sort().forEach(year => {
+    csv += year;
+    allMixes.forEach(mix => {
+      const tonsCt = totals[year][mix] || 0;
+      csv += ',' + fmtTons(tonsCt);
+    });
+    csv += '\n';
+  });
+
+  // Download single file
+  const blob = new Blob([csv], { type: 'text/csv; charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'pwl-tracker.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 
   showBanner('CSV exported', 'success');
 }
@@ -1377,6 +1684,90 @@ function importJSON() {
         saveState();
         render();
         showBanner('Data imported', 'success');
+      } catch (err) {
+        showBanner('Import failed: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function importCSV() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const lines = ev.target.result.trim().split('\n');
+        if (lines.length < 2) throw new Error('CSV file is empty or invalid');
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        const importedShifts = [];
+        let seq = (state.shifts.length > 0 ? Math.max(...state.shifts.map(s => s.seq || 0)) : state.nextSeq - 1) + 1;
+
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          const parts = [];
+          let current = '';
+          let inQuotes = false;
+          for (let j = 0; j < line.length; j++) {
+            if (line[j] === '"') {
+              inQuotes = !inQuotes;
+            } else if (line[j] === ',' && !inQuotes) {
+              parts.push(current.trim().replace(/^"|"$/g, ''));
+              current = '';
+            } else {
+              current += line[j];
+            }
+          }
+          parts.push(current.trim().replace(/^"|"$/g, ''));
+
+          const dateIdx = headers.indexOf('Date');
+          const mixIdx = headers.indexOf('Mix');
+          const tonsIdx = headers.indexOf('Shift Tons');
+          const bridgeIdx = headers.indexOf('Bridge');
+
+          if (dateIdx === -1 || mixIdx === -1 || tonsIdx === -1) {
+            throw new Error('CSV must have Date, Mix, and Shift Tons columns');
+          }
+
+          const date = parts[dateIdx];
+          const mix = parts[mixIdx];
+          const tons = parseFloat(parts[tonsIdx]);
+          const bridge = parts[bridgeIdx] && parts[bridgeIdx].toLowerCase() === 'yes';
+
+          if (!date || !mix || isNaN(tons)) {
+            console.warn(`Skipping invalid row: ${line}`);
+            continue;
+          }
+
+          importedShifts.push({
+            id: `s${seq}`,
+            seq: seq++,
+            date,
+            mix,
+            tonsCt: toCt(tons),
+            bridge
+          });
+        }
+
+        if (importedShifts.length === 0) throw new Error('No valid shifts found in CSV');
+
+        if (!confirm(`Import ${importedShifts.length} shifts? This will ADD to existing data.`)) return;
+
+        state.shifts.push(...importedShifts);
+        state.nextSeq = Math.max(...state.shifts.map(s => s.seq || 0)) + 1;
+        saveState();
+        render();
+        showBanner(`${importedShifts.length} shifts imported`, 'success');
       } catch (err) {
         showBanner('Import failed: ' + err.message, 'error');
       }
@@ -1586,6 +1977,15 @@ function runSelfTest() {
 // INITIALIZATION
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize Supabase client if enabled (Phase 1)
+  if (BACKEND === 'supabase' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase client initialized');
+  } else if (BACKEND === 'supabase') {
+    console.warn('BACKEND=supabase but SUPABASE_URL or SUPABASE_ANON_KEY not configured');
+    showBanner('Supabase not configured. Using localStorage.', 'error');
+  }
+
   state = loadState();
 
   if (!state) {
@@ -1638,6 +2038,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('filterMix').oninput = render;
 
   document.getElementById('exportCsvBtn').onclick = exportCSV;
+  document.getElementById('importCsvBtn').onclick = importCSV;
   document.getElementById('exportJsonBtn').onclick = exportJSON;
   document.getElementById('importJsonBtn').onclick = importJSON;
   document.getElementById('selfTestBtn').onclick = runSelfTest;
