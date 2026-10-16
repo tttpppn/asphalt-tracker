@@ -309,8 +309,90 @@
 
   <!-- Supabase Client Library (pinned 2.38.0) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0"></script>
+  <style>
+    .auth-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50000;
+    }
+    .auth-modal-content {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+    .auth-modal-content h2 {
+      margin: 0 0 10px 0;
+      color: #1a5490;
+      font-size: 1.5rem;
+      border: none;
+      padding: 0;
+    }
+    .auth-modal-content p {
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+    .auth-modal-content input {
+      width: 100%;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+    }
+    .auth-modal-content button {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    .auth-modal-content .secondary {
+      background: #7f8c8d;
+    }
+    .auth-error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+    .user-info {
+      text-align: right;
+      padding: 8px 16px;
+      background: #f0f8ff;
+      border-bottom: 1px solid #ddd;
+      font-size: 0.9rem;
+      color: #2c3e50;
+    }
+    .user-info span {
+      margin-right: 12px;
+    }
+  </style>
 </head>
 <body>
+
+<div id="authModal" class="auth-modal" style="display: none;">
+  <div class="auth-modal-content">
+    <h2>Sign In</h2>
+    <p>PWL Asphalt Tracker</p>
+    <div id="authError" class="auth-error" style="display: none;"></div>
+    <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+    <button id="authSignInBtn">Sign In</button>
+    <div id="authLoading" style="display: none; margin-top: 12px; color: #666;">Loading...</div>
+  </div>
+</div>
+
+<div id="userBar" class="user-info" style="display: none;">
+  <span style="color: #27ae60; font-weight: 500;">✓ Authenticated</span>
+  <button id="signOutBtn" class="secondary" style="padding: 4px 12px; font-size: 0.85rem;">Sign Out</button>
+</div>
 
 <div class="container">
   <h1>PWL Asphalt Sampling Tracker &amp; Shift Log</h1>
@@ -2484,6 +2566,144 @@ function runSelfTest() {
 }
 
 // ============================================================================
+// AUTHENTICATION (Password-only)
+// ============================================================================
+let isAuthenticated = false;
+let isAuthChecked = false;
+
+function getAuthToken() {
+  return sessionStorage.getItem('pwlTrackerAuth');
+}
+
+function setAuthToken(token) {
+  sessionStorage.setItem('pwlTrackerAuth', token);
+}
+
+function clearAuthToken() {
+  sessionStorage.removeItem('pwlTrackerAuth');
+}
+
+async function checkAuth() {
+  const token = getAuthToken();
+  if (token) {
+    isAuthenticated = true;
+    console.log('User authenticated from session');
+    return true;
+  }
+  isAuthenticated = false;
+  return false;
+}
+
+function showAuthModal() {
+  document.getElementById('authModal').style.display = 'flex';
+  document.getElementById('authPassword').focus();
+}
+
+function hideAuthModal() {
+  document.getElementById('authModal').style.display = 'none';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authError').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const errorDiv = document.getElementById('authError');
+  errorDiv.textContent = msg;
+  errorDiv.style.display = 'block';
+}
+
+async function signIn() {
+  const password = document.getElementById('authPassword').value;
+
+  if (!password) {
+    showAuthError('Password required');
+    return;
+  }
+
+  const loading = document.getElementById('authLoading');
+  loading.style.display = 'block';
+
+  try {
+    // Load settings to check password
+    if (!supabase) {
+      showAuthError('Supabase not configured');
+      loading.style.display = 'none';
+      return;
+    }
+
+    const { data: settingsRow, error } = await supabase
+      .from('settings')
+      .select('password_hash')
+      .eq('id', 1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      showAuthError('Failed to load settings');
+      loading.style.display = 'none';
+      return;
+    }
+
+    // If no password is set yet, set it on first sign-in
+    if (!settingsRow || !settingsRow.password_hash) {
+      const hash = btoa(password);
+      const { error: updateError } = await supabase
+        .from('settings')
+        .upsert({ id: 1, password_hash: hash }, { onConflict: 'id' });
+
+      if (updateError) {
+        showAuthError('Failed to set password');
+        loading.style.display = 'none';
+        return;
+      }
+
+      isAuthenticated = true;
+      setAuthToken('authenticated');
+      hideAuthModal();
+      showUserBar();
+      state = await loadState();
+      render();
+      showBanner('Password set and signed in', 'success');
+      console.log('First sign-in: password set');
+    } else {
+      // Verify password
+      const hash = btoa(password);
+      if (hash === settingsRow.password_hash) {
+        isAuthenticated = true;
+        setAuthToken('authenticated');
+        hideAuthModal();
+        showUserBar();
+        state = await loadState();
+        render();
+        console.log('Signed in');
+      } else {
+        showAuthError('Incorrect password');
+      }
+    }
+  } catch (e) {
+    showAuthError(e.message || 'Sign in error');
+    console.error('Sign in error:', e);
+  }
+  loading.style.display = 'none';
+}
+
+function signOut() {
+  isAuthenticated = false;
+  clearAuthToken();
+  state = null;
+  hideUserBar();
+  document.querySelector('.container').innerHTML = '';
+  showAuthModal();
+  console.log('User signed out');
+}
+
+function showUserBar() {
+  document.getElementById('userBar').style.display = 'block';
+}
+
+function hideUserBar() {
+  document.getElementById('userBar').style.display = 'none';
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2495,6 +2715,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('BACKEND=supabase but SUPABASE_URL or SUPABASE_ANON_KEY not configured');
     showBanner('Supabase not configured. Using localStorage.', 'error');
   }
+
+  // Check authentication (NEW: Auth required)
+  const isAuthed = await checkAuth();
+  isAuthChecked = true;
+
+  if (!isAuthed) {
+    console.log('User not authenticated, showing sign-in modal');
+    showAuthModal();
+    return; // Don't load data until signed in
+  }
+
+  showUserBar();
 
   // Load state asynchronously (Phase 3)
   try {
@@ -2589,6 +2821,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     updateLotInfo();
   }
+
+  // Auth button listeners
+  document.getElementById('authSignInBtn').onclick = signIn;
+  document.getElementById('signOutBtn').onclick = signOut;
+
+  // Enter key to sign in
+  document.getElementById('authPassword').onkeypress = (e) => {
+    if (e.key === 'Enter') signIn();
+  };
 });
 
 function updateLotInfo() {

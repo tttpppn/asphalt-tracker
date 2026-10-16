@@ -1,0 +1,441 @@
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 1
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 2
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 2
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-08-28, beforeCt: 6000t, afterCt: 7500t, remaining: 1500t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:554     SKIP: beyond this lot's range
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 1000t to Lot 101
+index.html:535 
+  Processing Lot 102:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 102
+index.html:595 
+Final result: 2 lots, splits: Lot101:1000t, Lot102:500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-08-16, beforeCt: 0t, afterCt: 1600t, remaining: 1600t
+index.html:496 lotsForMix count: 1
+index.html:509 
+Lot 103 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-08-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 103:
+index.html:550     ✓ ACTIVE LOT - allocating 1600t to Lot 103
+index.html:595 
+Final result: 1 lots, splits: Lot103:1600t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-08-28, beforeCt: 6000t, afterCt: 7500t, remaining: 1500t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:554     SKIP: beyond this lot's range
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 1000t to Lot 101
+index.html:535 
+  Processing Lot 102:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 102
+index.html:595 
+Final result: 2 lots, splits: Lot101:1000t, Lot102:500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-01, beforeCt: 0t, afterCt: 3000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 3000t to Lot 100
+index.html:595 
+Final result: 1 lots, splits: Lot100:3000t
+index.html:494 
+=== splitShiftAcrossLots ===
+index.html:495 shiftDate: 2026-07-16, beforeCt: 3000t, afterCt: 6000t, remaining: 3000t
+index.html:496 lotsForMix count: 3
+index.html:509 
+Lot 100 (index 0): range [0t, 3500t)
+index.html:510   createdDate: 2026-07-01
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 101 (index 1): range [3500t, 7000t)
+index.html:510   createdDate: 2026-07-16
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:509 
+Lot 102 (index 2): range [7000t, 10500t)
+index.html:510   createdDate: 2026-08-28
+index.html:517   ✓ ACTIVE (has capacity)
+index.html:522 
+Active lots: 0, 1, 2
+index.html:524 Using filter: non-expired only
+index.html:535 
+  Processing Lot 100:
+index.html:550     ✓ ACTIVE LOT - allocating 500t to Lot 100
+index.html:535 
+  Processing Lot 101:
+index.html:550     ✓ ACTIVE LOT - allocating 2500t to Lot 101
+index.html:595 
+Final result: 2 lots, splits: Lot100:500t, Lot101:2500t
