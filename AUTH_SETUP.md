@@ -9,6 +9,22 @@ The app now requires a **single password** to access the tracker. No usernames o
 3. **Session:** Password verified for current browser session
 4. **Sign-out:** Clears session, returns to password prompt
 
+## First Sign-In Flow
+
+1. Enter a password
+2. You'll be prompted for a **security question** (e.g., "What is your pet's name?")
+3. Enter your answer to the security question
+4. Both password and answer are saved
+5. Tracker unlocks
+
+## Password Recovery
+
+Forgot your password? No problem:
+1. Click **"Forgot Password?"** on the sign-in modal
+2. Answer your security question
+3. If correct, set a new password
+4. Sign in with the new password
+
 ## Testing
 
 ```bash
@@ -17,10 +33,11 @@ python -m http.server 8000
 
 # 2. Open browser to http://localhost:8000
 # 3. See password modal
-# 4. Enter any password on first login (becomes your password)
-# 5. Tracker loads, "✓ Authenticated" in top-right
-# 6. Refresh page → password stays verified
-# 7. Close tab → password required next session
+# 4. Enter any password
+# 5. Enter security question
+# 6. Enter answer to security question
+# 7. Tracker loads, "✓ Authenticated" in top-right
+# 8. Test recovery: Sign Out → Forgot Password? → Answer question → Reset password
 ```
 
 ## Key Features
