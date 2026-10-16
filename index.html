@@ -422,33 +422,6 @@
   <button id="signOutBtn" class="secondary" style="padding: 4px 12px; font-size: 0.85rem;">Sign Out</button>
 </div>
 
-<script>
-// Early event listener attachment (before DOMContentLoaded)
-setTimeout(() => {
-  const btn = document.getElementById('authSignInBtn');
-  if (btn) {
-    btn.onclick = signIn;
-    document.getElementById('authForgotBtn').onclick = showRecoveryModal;
-    document.getElementById('authPassword').onkeypress = (e) => {
-      if (e.key === 'Enter') signIn();
-    };
-    document.getElementById('recoveryVerifyBtn').onclick = verifySecurityAnswer;
-    document.getElementById('recoveryResetBtn').onclick = resetPassword;
-    document.getElementById('recoveryBackBtn').onclick = () => {
-      hideRecoveryModal();
-      showAuthModal();
-    };
-    document.getElementById('q1Answer').onkeypress = (e) => {
-      if (e.key === 'Enter') verifySecurityAnswer();
-    };
-    document.getElementById('recoveryNewPassword').onkeypress = (e) => {
-      if (e.key === 'Enter') resetPassword();
-    };
-    document.getElementById('signOutBtn').onclick = signOut;
-    console.log('✓ Auth event listeners attached');
-  }
-}, 100);
-</script>
 
 <div class="container">
   <h1>PWL Asphalt Sampling Tracker &amp; Shift Log</h1>
@@ -2901,60 +2874,9 @@ async function resetPassword() {
 }
 
 // ============================================================================
-// INITIALIZATION
+// ATTACH ALL BUTTON LISTENERS (runs early, before auth check)
 // ============================================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  // Initialize Supabase client if enabled (Phase 1)
-  if (BACKEND === 'supabase' && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase client initialized');
-  } else if (BACKEND === 'supabase') {
-    console.warn('BACKEND=supabase but SUPABASE_URL or SUPABASE_ANON_KEY not configured');
-    showBanner('Supabase not configured. Using localStorage.', 'error');
-  }
-
-  // Check authentication (NEW: Auth required)
-  const isAuthed = await checkAuth();
-  isAuthChecked = true;
-
-  if (!isAuthed) {
-    console.log('User not authenticated, showing sign-in modal');
-    showAuthModal();
-    return; // Don't load data until signed in
-  }
-
-  showUserBar();
-
-  // Load state asynchronously (Phase 3)
-  try {
-    state = await loadState();
-  } catch (e) {
-    console.error('Fatal error loading state:', e);
-    showBanner(`Fatal error: ${e.message}. Cannot start app.`, 'error');
-    return;
-  }
-
-  if (!state) {
-    state = {
-      version: 1,
-      settings: { startLotNo: 100 },
-      nextSeq: 100,
-      nextLotNo: 100,
-      shifts: [],
-      lots: [],
-      ui: { sortMode: 'date', filterLot: '', filterMix: '', hideEmpty: false }
-    };
-  }
-
-  // Initial render: skip reconcileLots to preserve loaded lot structure
-  const today = new Date();
-  const derived = derive(state, today, true);
-  renderSummary(derived);
-  renderSamplingTable(derived);
-  renderShiftTable(derived);
-  renderAnnualSummary(derived);
-
-  // Event listeners
+function attachAllButtonListeners() {
   document.getElementById('addShiftBtn').onclick = () => {
     if (editingShiftId) {
       editShift(
@@ -3003,7 +2925,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const startLotNoInput = document.getElementById('startLotNo');
   const updateBtn = document.getElementById('updateStartLotBtn');
   if (startLotNoInput && updateBtn) {
-    startLotNoInput.value = state.settings.startLotNo;
     updateBtn.onclick = () => {
       const newStart = parseInt(startLotNoInput.value);
       if (isNaN(newStart) || newStart < 1) {
@@ -3016,7 +2937,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateLotInfo();
       showBanner(`Starting lot number updated to ${newStart}`, 'success');
     };
-    updateLotInfo();
   }
 
   // Auth button listeners
@@ -3042,6 +2962,73 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('recoveryNewPassword').onkeypress = (e) => {
     if (e.key === 'Enter') resetPassword();
   };
+
+  console.log('✓ All button listeners attached');
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize Supabase client if enabled (Phase 1)
+  if (BACKEND === 'supabase' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase client initialized');
+  } else if (BACKEND === 'supabase') {
+    console.warn('BACKEND=supabase but SUPABASE_URL or SUPABASE_ANON_KEY not configured');
+    showBanner('Supabase not configured. Using localStorage.', 'error');
+  }
+
+  // Attach button listeners early, before auth check (so buttons always work)
+  attachAllButtonListeners();
+
+  // Check authentication (NEW: Auth required)
+  const isAuthed = await checkAuth();
+  isAuthChecked = true;
+
+  if (!isAuthed) {
+    console.log('User not authenticated, showing sign-in modal');
+    showAuthModal();
+    return; // Don't load data until signed in
+  }
+
+  showUserBar();
+
+  // Load state asynchronously (Phase 3)
+  try {
+    state = await loadState();
+  } catch (e) {
+    console.error('Fatal error loading state:', e);
+    showBanner(`Fatal error: ${e.message}. Cannot start app.`, 'error');
+    return;
+  }
+
+  if (!state) {
+    state = {
+      version: 1,
+      settings: { startLotNo: 100 },
+      nextSeq: 100,
+      nextLotNo: 100,
+      shifts: [],
+      lots: [],
+      ui: { sortMode: 'date', filterLot: '', filterMix: '', hideEmpty: false }
+    };
+  }
+
+  // Initial render: skip reconcileLots to preserve loaded lot structure
+  const today = new Date();
+  const derived = derive(state, today, true);
+  renderSummary(derived);
+  renderSamplingTable(derived);
+  renderShiftTable(derived);
+  renderAnnualSummary(derived);
+
+  // Update lot info after state is loaded
+  const startLotNoInput = document.getElementById('startLotNo');
+  if (startLotNoInput && state) {
+    startLotNoInput.value = state.settings.startLotNo;
+    updateLotInfo();
+  }
 });
 
 function updateLotInfo() {
