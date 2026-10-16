@@ -2761,6 +2761,10 @@ function hideUserBar() {
 function showRecoveryModal() {
   hideAuthModal();
   document.getElementById('recoveryModal').style.display = 'flex';
+  document.getElementById('recoveryQuestions').style.display = 'block';
+  document.getElementById('recoveryReset').style.display = 'none';
+  document.getElementById('recoveryError').style.display = 'none';
+  document.getElementById('q1Answer').value = '';
   loadSecurityQuestion();
 }
 
