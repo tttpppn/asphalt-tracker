@@ -385,7 +385,35 @@
     <div id="authError" class="auth-error" style="display: none;"></div>
     <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
     <button id="authSignInBtn">Sign In</button>
+    <button id="authForgotBtn" class="secondary" style="width: 100%; margin-top: 8px;">Forgot Password?</button>
     <div id="authLoading" style="display: none; margin-top: 12px; color: #666;">Loading...</div>
+  </div>
+</div>
+
+<div id="recoveryModal" class="auth-modal" style="display: none;">
+  <div class="auth-modal-content" style="max-width: 500px;">
+    <h2>Reset Password</h2>
+    <p>Answer your security question to reset your password</p>
+    <div id="recoveryError" class="auth-error" style="display: none;"></div>
+
+    <div id="recoveryQuestions" style="display: none;">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;" id="q1Label"></label>
+        <input type="text" id="q1Answer" placeholder="Your answer">
+      </div>
+      <button id="recoveryVerifyBtn">Verify Answer</button>
+    </div>
+
+    <div id="recoveryReset" style="display: none;">
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #2c3e50;">New Password:</label>
+        <input type="password" id="recoveryNewPassword" placeholder="Enter new password">
+      </div>
+      <button id="recoveryResetBtn">Set New Password</button>
+    </div>
+
+    <button id="recoveryBackBtn" class="secondary" style="width: 100%; margin-top: 12px;">Back to Sign In</button>
+    <div id="recoveryLoading" style="display: none; margin-top: 12px; color: #666;">Loading...</div>
   </div>
 </div>
 
@@ -2645,9 +2673,32 @@ async function signIn() {
     // If no password is set yet, set it on first sign-in
     if (!settingsRow || !settingsRow.password_hash) {
       const hash = btoa(password);
+
+      // Prompt for security question and answer
+      const question = prompt('Set up security question for password recovery (e.g., "What is your pet\'s name?"):');
+      if (!question) {
+        showAuthError('Security question required');
+        loading.style.display = 'none';
+        return;
+      }
+
+      const answer = prompt('Your answer to the security question:');
+      if (!answer) {
+        showAuthError('Security answer required');
+        loading.style.display = 'none';
+        return;
+      }
+
+      const answerHash = btoa(answer.trim().toLowerCase());
+
       const { error: updateError } = await supabase
         .from('settings')
-        .upsert({ id: 1, password_hash: hash }, { onConflict: 'id' });
+        .upsert({
+          id: 1,
+          password_hash: hash,
+          security_question: question,
+          security_answer_hash: answerHash
+        }, { onConflict: 'id' });
 
       if (updateError) {
         showAuthError('Failed to set password');
@@ -2661,8 +2712,8 @@ async function signIn() {
       showUserBar();
       state = await loadState();
       render();
-      showBanner('Password set and signed in', 'success');
-      console.log('First sign-in: password set');
+      showBanner('Password and security question set', 'success');
+      console.log('First sign-in: password and security question set');
     } else {
       // Verify password
       const hash = btoa(password);
@@ -2701,6 +2752,124 @@ function showUserBar() {
 
 function hideUserBar() {
   document.getElementById('userBar').style.display = 'none';
+}
+
+// ============================================================================
+// PASSWORD RECOVERY (Security Question)
+// ============================================================================
+function showRecoveryModal() {
+  hideAuthModal();
+  document.getElementById('recoveryModal').style.display = 'flex';
+  loadSecurityQuestion();
+}
+
+function hideRecoveryModal() {
+  document.getElementById('recoveryModal').style.display = 'none';
+  document.getElementById('q1Answer').value = '';
+  document.getElementById('recoveryNewPassword').value = '';
+  document.getElementById('recoveryError').style.display = 'none';
+  document.getElementById('recoveryQuestions').style.display = 'block';
+  document.getElementById('recoveryReset').style.display = 'none';
+}
+
+function showRecoveryError(msg) {
+  const errorDiv = document.getElementById('recoveryError');
+  errorDiv.textContent = msg;
+  errorDiv.style.display = 'block';
+}
+
+async function loadSecurityQuestion() {
+  try {
+    if (!supabase) return;
+
+    const { data: settingsRow } = await supabase
+      .from('settings')
+      .select('security_question')
+      .eq('id', 1)
+      .single();
+
+    if (settingsRow?.security_question) {
+      document.getElementById('q1Label').textContent = settingsRow.security_question;
+    }
+  } catch (e) {
+    console.error('Error loading security question:', e);
+  }
+}
+
+async function verifySecurityAnswer() {
+  const answer = document.getElementById('q1Answer').value.trim().toLowerCase();
+
+  if (!answer) {
+    showRecoveryError('Please answer the security question');
+    return;
+  }
+
+  const loading = document.getElementById('recoveryLoading');
+  loading.style.display = 'block';
+
+  try {
+    const { data: settingsRow } = await supabase
+      .from('settings')
+      .select('security_answer_hash')
+      .eq('id', 1)
+      .single();
+
+    if (!settingsRow?.security_answer_hash) {
+      showRecoveryError('Security question not set up');
+      loading.style.display = 'none';
+      return;
+    }
+
+    const hash = btoa(answer);
+    if (hash === settingsRow.security_answer_hash) {
+      // Answer correct, show password reset form
+      document.getElementById('recoveryQuestions').style.display = 'none';
+      document.getElementById('recoveryReset').style.display = 'block';
+      document.getElementById('recoveryError').style.display = 'none';
+      document.getElementById('recoveryNewPassword').focus();
+    } else {
+      showRecoveryError('Incorrect answer');
+    }
+  } catch (e) {
+    showRecoveryError(e.message || 'Error verifying answer');
+    console.error('Recovery error:', e);
+  }
+  loading.style.display = 'none';
+}
+
+async function resetPassword() {
+  const newPassword = document.getElementById('recoveryNewPassword').value;
+
+  if (!newPassword) {
+    showRecoveryError('Please enter a new password');
+    return;
+  }
+
+  const loading = document.getElementById('recoveryLoading');
+  loading.style.display = 'block';
+
+  try {
+    const hash = btoa(newPassword);
+    const { error } = await supabase
+      .from('settings')
+      .update({ password_hash: hash })
+      .eq('id', 1);
+
+    if (error) {
+      showRecoveryError('Failed to reset password');
+      loading.style.display = 'none';
+      return;
+    }
+
+    hideRecoveryModal();
+    showAuthModal();
+    showBanner('Password reset successful. Please sign in with your new password.', 'success');
+    console.log('Password reset successfully');
+  } catch (e) {
+    showRecoveryError(e.message || 'Reset error');
+    console.error('Reset error:', e);
+  }
+  loading.style.display = 'none';
 }
 
 // ============================================================================
@@ -2824,11 +2993,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Auth button listeners
   document.getElementById('authSignInBtn').onclick = signIn;
+  document.getElementById('authForgotBtn').onclick = showRecoveryModal;
   document.getElementById('signOutBtn').onclick = signOut;
+
+  // Recovery listeners
+  document.getElementById('recoveryVerifyBtn').onclick = verifySecurityAnswer;
+  document.getElementById('recoveryResetBtn').onclick = resetPassword;
+  document.getElementById('recoveryBackBtn').onclick = () => {
+    hideRecoveryModal();
+    showAuthModal();
+  };
 
   // Enter key to sign in
   document.getElementById('authPassword').onkeypress = (e) => {
     if (e.key === 'Enter') signIn();
+  };
+  document.getElementById('q1Answer').onkeypress = (e) => {
+    if (e.key === 'Enter') verifySecurityAnswer();
+  };
+  document.getElementById('recoveryNewPassword').onkeypress = (e) => {
+    if (e.key === 'Enter') resetPassword();
   };
 });
 
