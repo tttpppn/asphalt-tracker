@@ -422,6 +422,34 @@
   <button id="signOutBtn" class="secondary" style="padding: 4px 12px; font-size: 0.85rem;">Sign Out</button>
 </div>
 
+<script>
+// Early event listener attachment (before DOMContentLoaded)
+setTimeout(() => {
+  const btn = document.getElementById('authSignInBtn');
+  if (btn) {
+    btn.onclick = signIn;
+    document.getElementById('authForgotBtn').onclick = showRecoveryModal;
+    document.getElementById('authPassword').onkeypress = (e) => {
+      if (e.key === 'Enter') signIn();
+    };
+    document.getElementById('recoveryVerifyBtn').onclick = verifySecurityAnswer;
+    document.getElementById('recoveryResetBtn').onclick = resetPassword;
+    document.getElementById('recoveryBackBtn').onclick = () => {
+      hideRecoveryModal();
+      showAuthModal();
+    };
+    document.getElementById('q1Answer').onkeypress = (e) => {
+      if (e.key === 'Enter') verifySecurityAnswer();
+    };
+    document.getElementById('recoveryNewPassword').onkeypress = (e) => {
+      if (e.key === 'Enter') resetPassword();
+    };
+    document.getElementById('signOutBtn').onclick = signOut;
+    console.log('✓ Auth event listeners attached');
+  }
+}, 100);
+</script>
+
 <div class="container">
   <h1>PWL Asphalt Sampling Tracker &amp; Shift Log</h1>
   <div id="banner"></div>
