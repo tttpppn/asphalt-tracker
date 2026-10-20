@@ -1817,13 +1817,16 @@ async function generateSamples(lotNo, seed = null) {
 }
 
 async function deleteLot(lotNo) {
+  console.log(`🗑️ deleteLot called with Lot ${lotNo}`);
   if (confirm(`Delete Lot ${lotNo}? This cannot be undone.`)) {
+    console.log(`✓ User confirmed deletion of Lot ${lotNo}`);
     // Verify lot exists before deleting
     const initialCount = state.lots.length;
     state.lots = state.lots.filter(l => l.lotNo !== lotNo);
     const deleted = initialCount > state.lots.length;
 
     if (!deleted) {
+      console.log(`✗ Lot ${lotNo} not found`);
       showBanner(`Lot ${lotNo} not found`, 'error');
       return;
     }
@@ -1831,9 +1834,11 @@ async function deleteLot(lotNo) {
     // Always reset nextLotNo when deleting a lot to enable proper gap-filling on next lot creation
     state.nextLotNo = undefined;
 
-    console.log(`deleteLot: Deleted Lot ${lotNo}, existing lots now: ${state.lots.map(l => l.lotNo).sort((a,b) => a-b).join(', ')}`);
+    console.log(`✓ deleteLot: Deleted Lot ${lotNo}, existing lots now: ${state.lots.map(l => l.lotNo).sort((a,b) => a-b).join(', ')}`);
 
     await commit();
+  } else {
+    console.log(`✗ User cancelled deletion of Lot ${lotNo}`);
   }
 }
 
