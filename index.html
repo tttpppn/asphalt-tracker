@@ -1757,8 +1757,21 @@ async function editShift(id, date, mix, plant, tons, locations, bridge) {
 }
 
 async function deleteShift(id) {
+  console.log(`🗑️ deleteShift called with id=${id}`);
+  const shift = state.shifts.find(s => s.id === id);
+  if (shift) {
+    console.log(`✓ Deleting shift: date=${shift.date}, mix=${shift.mix}, plant=${shift.plant}, tons=${shift.tonsCt}`);
+  }
+  const initialCount = state.shifts.length;
   state.shifts = state.shifts.filter(s => s.id !== id);
-  await commit();
+  const deleted = initialCount > state.shifts.length;
+
+  if (deleted) {
+    console.log(`✓ deleteShift: Shift ${id} deleted successfully. Remaining shifts: ${state.shifts.length}`);
+    await commit();
+  } else {
+    console.log(`✗ deleteShift: Shift ${id} not found`);
+  }
 }
 
 function getNextLotNo() {
