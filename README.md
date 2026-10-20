@@ -149,6 +149,27 @@ Open the app and click **"Self-Test"** to run built-in validation tests.
 
 ## 📝 Development Notes
 
+### Recent Updates (2026-10-20)
+- ✅ **UI/UX Fixes**:
+  - Fixed Clear All button being blocked by auth modal overlay
+  - Improved button listener initialization (attach before auth check)
+  - Better error handling for Supabase CDN loading failures
+  
+- ✅ **Data Management**:
+  - Clear All now properly deletes Supabase data before reload
+  - Fixed backup restore showing empty folder placeholders
+  - Removed redundant hardReset function (consolidated into clearAll)
+  
+- ✅ **Logging & Debugging**:
+  - Added detailed logging to `deleteShift()` function with emoji prefixes
+  - Added detailed logging to `deleteLot()` function with emoji prefixes
+  - Better visibility into delete operations in browser console
+  
+- ✅ **Example Data**:
+  - Fixed: loadExampleData now uses raw shifts only
+  - Lots and samples are auto-generated through proper app logic
+  - Properly demonstrates sampling tracker allocation instead of bypassing it
+
 ### Phase History
 - **Phase 0**: Local storage foundation
 - **Phase 1**: Supabase schema & basic CRUD
@@ -157,6 +178,7 @@ Open the app and click **"Self-Test"** to run built-in validation tests.
 - **Phase 5**: Convert all functions to async
 - **Phase 6**: Failure injection & multi-tab tests
 - **Phase 7**: Production cutover ✅
+- **Phase 8**: Button interactions & data management fixes (current)
 
 ### Important Files
 - `index.html` — Single-file app (all code & UI)
