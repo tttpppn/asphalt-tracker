@@ -511,6 +511,47 @@
         <tbody></tbody>
       </table>
     </section>
+
+    <section>
+      <h2>📖 README & Documentation</h2>
+      <div style="background: #f5f5f5; padding: 20px; border-radius: 6px; line-height: 1.8;">
+        <h3 style="margin-top: 0; color: #1a5490;">PWL Asphalt Sampling Tracker</h3>
+        <p>A modern web application for managing asphalt lot inventory and sample tracking with <strong>real-time Supabase persistence</strong>.</p>
+
+        <h4>✨ Key Features</h4>
+        <ul style="margin: 10px 0;">
+          <li>📦 <strong>Lot Management</strong> — Create and track asphalt mix lots with expiration dates</li>
+          <li>📊 <strong>Sampling Tracker</strong> — Record shifts and allocate tonnage across lots using a rolling 30-day window</li>
+          <li>🎯 <strong>Sample Generation</strong> — Automatically generate sample records for each lot</li>
+          <li>☁️ <strong>Cloud Sync</strong> — Real-time data persistence to Supabase</li>
+          <li>📱 <strong>Offline Mode</strong> — Works offline with localStorage fallback</li>
+          <li>📥 <strong>Import/Export</strong> — CSV and JSON import/export for data portability</li>
+        </ul>
+
+        <h4>🚀 Quick Reference</h4>
+        <ul style="margin: 10px 0;">
+          <li><strong>Add a Shift</strong>: Enter date, mix, plant, tons, and click "Add Shift"</li>
+          <li><strong>Allocate to Lots</strong>: Shifts automatically allocate to lots within a rolling 30-day window</li>
+          <li><strong>Generate Samples</strong>: Click "Generate Samples" to create 7 samples per lot</li>
+          <li><strong>Clear All Data</strong>: Use "Clear All" button to reset everything (deletes from Supabase)</li>
+          <li><strong>Backup & Restore</strong>: Use "Backup Now" and "Restore from Backup" for data recovery</li>
+        </ul>
+
+        <h4>🔧 Available Tools</h4>
+        <ul style="margin: 10px 0;">
+          <li><strong>Export CSV</strong> — Download sampling data as spreadsheet</li>
+          <li><strong>Import CSV/JSON</strong> — Load data from files</li>
+          <li><strong>Self-Test</strong> — Run validation tests</li>
+          <li><strong>Load Example Data</strong> — Load sample shifts for testing</li>
+        </ul>
+
+        <h4>📚 Full Documentation</h4>
+        <p>For complete documentation, visit the GitHub repository:</p>
+        <a href="https://github.com/tttpppn/asphalt-tracker" target="_blank" style="color: #3498db; text-decoration: none; font-weight: 600;">
+          📖 View Full README on GitHub →
+        </a>
+      </div>
+    </section>
   </div>
 
   <div class="controls">
