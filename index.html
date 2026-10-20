@@ -1026,7 +1026,7 @@ function derive(state, today = new Date(), skipReconcile = false) {
 
   sortedShifts.forEach(shift => {
     const key = normMix(shift.mix) + '|' + normPlant(shift.plant || '');
-    const lotsForMixPlant = state.lots.filter(l => l.mixKey === normMix(l.mix) && normPlant(l.plant || '') === normPlant(shift.plant || ''));
+    const lotsForMixPlant = state.lots.filter(l => l.mixKey === normMix(shift.mix) && normPlant(l.plant || '') === normPlant(shift.plant || ''));
     const mixPlantTotalBefore = mixPlantTotals[key] || 0;
     const mixPlantTotalAfter = mixPlantTotalBefore + toCt(shift.tonsCt);
 
@@ -1710,7 +1710,7 @@ function getNextLotNo() {
 
 async function createLot(mix, plant, lotNo) {
   const key = normMix(mix) + '|' + normPlant(plant || '');
-  const lotsForMixPlant = state.lots.filter(l => l.mixKey === normMix(l.mix) && normPlant(l.plant || '') === normPlant(plant || ''));
+  const lotsForMixPlant = state.lots.filter(l => l.mixKey === normMix(mix) && normPlant(l.plant || '') === normPlant(plant || ''));
   const maxIndex = lotsForMixPlant.length > 0 ? Math.max(...lotsForMixPlant.map(l => l.index)) : -1;
 
   const nextLotNo = lotNo || getNextLotNo();
