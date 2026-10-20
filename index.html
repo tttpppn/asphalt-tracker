@@ -2274,6 +2274,13 @@ async function restoreFromBackup() {
       return;
     }
 
+    // Filter out folders, keep only files
+    files = files.filter(f => !f.is_folder);
+    if (files.length === 0) {
+      showBanner('No backup files found', 'error');
+      return;
+    }
+
     // Sort by newest first
     files.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
