@@ -2265,7 +2265,7 @@ async function restoreFromBackup() {
     showBanner('Loading backups...', 'info');
 
     // List all files in backups bucket
-    const { data: files, error: listError } = await supabase.storage.from('backups').list();
+    let { data: files, error: listError } = await supabase.storage.from('backups').list();
 
     if (listError) throw listError;
 
