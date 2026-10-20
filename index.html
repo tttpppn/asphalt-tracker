@@ -523,7 +523,6 @@
     <button id="selfTestBtn" class="secondary">Self-Test</button>
     <button id="loadExampleBtn" class="secondary">Load Example Data</button>
     <button id="clearAllBtn" class="danger">Clear All</button>
-    <button id="hardResetBtn" class="danger">Hard Reset (Clear & Reload)</button>
   </div>
 
   <div id="testResults"></div>
@@ -2574,12 +2573,6 @@ async function clearAll() {
   setTimeout(() => location.reload(), 500);
 }
 
-function hardReset() {
-  if (!confirm('Hard reset? This will clear all data AND reload the page. This cannot be undone.')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  location.reload();
-}
-
 // ============================================================================
 // EXAMPLE DATA AND SELF-TEST
 // ============================================================================
@@ -3092,7 +3085,6 @@ function attachAllButtonListeners() {
   document.getElementById('selfTestBtn').onclick = runSelfTest;
   document.getElementById('loadExampleBtn').onclick = loadExampleData;
   document.getElementById('clearAllBtn').onclick = clearAll;
-  document.getElementById('hardResetBtn').onclick = hardReset;
 
   const startLotNoInput = document.getElementById('startLotNo');
   const updateBtn = document.getElementById('updateStartLotBtn');
