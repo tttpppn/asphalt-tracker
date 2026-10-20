@@ -486,6 +486,8 @@
         <input type="date" id="shiftDate" placeholder="Date">
         <input type="text" id="shiftMix" placeholder="Mix (e.g., PMA0.5)" list="mixList" style="width: 150px;">
         <datalist id="mixList"></datalist>
+        <input type="text" id="shiftPlant" placeholder="Plant (e.g., Plant A)" list="plantList" style="width: 150px;">
+        <datalist id="plantList"></datalist>
         <input type="number" id="shiftTons" placeholder="Tons" step="0.01" min="0" style="width: 100px;">
         <input type="text" id="shiftLocations" placeholder="Locations (e.g., North, South)" style="width: 200px;">
         <label><input type="checkbox" id="shiftBridge"> Bridge deck</label>
@@ -496,6 +498,7 @@
           <tr>
             <th>Date</th>
             <th>Mix</th>
+            <th>Plant</th>
             <th>Shift Tons</th>
             <th>Total Lot Tons</th>
             <th>Locations</th>
@@ -599,6 +602,10 @@ function normMix(mix) {
   return mix.trim().toLowerCase();
 }
 
+function normPlant(plant) {
+  return plant.trim().toLowerCase();
+}
+
 function escapeCSV(val) {
   if (val == null) return '';
   const str = String(val);
@@ -646,7 +653,7 @@ function getLotTonnageFromLedger(lot, ledger) {
 
 function getLotTonnageFromShifts(lot, state, today = new Date()) {
   // Calculate actual tonnage allocated to this lot from all shifts (including RENEWAL allocations)
-  const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+  const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey && normPlant(l.plant || '') === normPlant(lot.plant || ''));
   const sortedShifts = sortShifts(state.shifts);
   let total = 0;
 
@@ -717,12 +724,12 @@ function sortShifts(shifts) {
   });
 }
 
-function computeMixLedgers(state) {
+function computeMixPlantLedgers(state) {
   const sorted = sortShifts(state.shifts);
   const ledgers = {};
 
   sorted.forEach(shift => {
-    const key = normMix(shift.mix);
+    const key = normMix(shift.mix) + '|' + normPlant(shift.plant || '');
     if (!ledgers[key]) ledgers[key] = [];
 
     const before = ledgers[key].length > 0 ? ledgers[key][ledgers[key].length - 1].afterCt : 0;
@@ -747,24 +754,24 @@ function reconcileLots(state, ledgers, today = new Date()) {
     return true;
   });
 
-  const lotsForMix = {};
+  const lotsForMixPlant = {};
   state.lots.forEach(lot => {
-    const key = normMix(lot.mix);
-    if (!lotsForMix[key]) lotsForMix[key] = [];
-    lotsForMix[key].push(lot);
+    const key = normMix(lot.mix) + '|' + normPlant(lot.plant || '');
+    if (!lotsForMixPlant[key]) lotsForMixPlant[key] = [];
+    lotsForMixPlant[key].push(lot);
   });
 
-  // Sort once per mix, not per lot
-  Object.keys(lotsForMix).forEach(key => {
-    lotsForMix[key].sort((a, b) => a.index - b.index);
+  // Sort once per (mix, plant), not per lot
+  Object.keys(lotsForMixPlant).forEach(key => {
+    lotsForMixPlant[key].sort((a, b) => a.index - b.index);
   });
 
   Object.keys(ledgers).forEach(key => {
     const ledger = ledgers[key];
     if (ledger.length === 0) return;
 
-    if (!lotsForMix[key]) lotsForMix[key] = [];
-    const existing = lotsForMix[key];
+    if (!lotsForMixPlant[key]) lotsForMixPlant[key] = [];
+    const existing = lotsForMixPlant[key];
 
     // If we have existing lots for this mix, preserve them (don't recreate)
     const existingIndices = new Set(existing.map(l => l.index));
@@ -787,7 +794,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
         neededByTime = requiredIndex + 1;
         currentWindowStart = shiftDate;  // New window starts at this shift date
         lotWindowStart[neededByTime] = shiftDate;
-        lotCreatedByShift[neededByTime] = entry.shift.date;  // Store the date string, not Date object
+        lotCreatedByShift[neededByTime] = entry.shift.date;
       } else if (currentWindowStart === null) {
         currentWindowStart = shiftDate;  // First window
         lotWindowStart[0] = shiftDate;
@@ -796,7 +803,9 @@ function reconcileLots(state, ledgers, today = new Date()) {
       // Assign windowStartDate to all lots needed by tonnage in this window
       for (let idx = requiredIndex + 1; idx <= neededByTime; idx++) {
         if (!lotWindowStart[idx]) {
-          lotWindowStart[idx] = currentWindowStart;  // All lots in same window get same windowStartDate
+          // NEW LOTS created due to tonnage overflow get THIS shift's date as window start
+          lotWindowStart[idx] = shiftDate;
+          lotCreatedByShift[idx] = entry.shift.date;
         }
       }
 
@@ -829,10 +838,15 @@ function reconcileLots(state, ledgers, today = new Date()) {
       const lotDate = shiftsInRange.length > 0 ? shiftsInRange[0].shift.date : lotCreatedByShift[idx] || fmtLocalDate(today);
       const windowStart = lotWindowStart[idx] ? fmtLocalDate(lotWindowStart[idx]) : lotDate;
 
+      // Parse composite key to get mix and plant
+      const [mixKey, plantKey] = key.split('|');
+      const shiftForMixPlant = state.shifts.find(s => normMix(s.mix) + '|' + normPlant(s.plant || '') === key);
+
       const newLot = {
         lotNo: nextLotNo,
-        mix: state.shifts.find(s => normMix(s.mix) === key).mix,
-        mixKey: key,
+        mix: shiftForMixPlant?.mix || '',
+        plant: shiftForMixPlant?.plant || '',
+        mixKey: mixKey,
         index: idx,
         createdBy: 'auto',
         createdDate: lotDate,
@@ -850,13 +864,13 @@ function reconcileLots(state, ledgers, today = new Date()) {
 // ============================================================================
 // SPLIT CALCULATION
 // ============================================================================
-function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, today = new Date()) {
+function splitShiftAcrossLots(beforeCt, afterCt, lotsForMixPlant, shiftDate = null, today = new Date()) {
   const shiftTons = (afterCt - beforeCt) / 100;
   console.log(`\n=== splitShiftAcrossLots (ROLLING 30-DAY WINDOW) ===`);
   console.log(`shiftDate: ${shiftDate}, shift tonnage: ${shiftTons}t`);
-  console.log(`lotsForMix count: ${lotsForMix.length}`);
+  console.log(`lotsForMixPlant count: ${lotsForMixPlant.length}`);
 
-  if (lotsForMix.length === 0) {
+  if (lotsForMixPlant.length === 0) {
     console.log(`ERROR: No lots available!`);
     return [];
   }
@@ -864,7 +878,7 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMix, shiftDate = null, t
   const shiftD = parseLocalDate(shiftDate);
 
   // Sort by creation date (earliest first), then lot number
-  const sorted = [...lotsForMix].sort((a, b) => {
+  const sorted = [...lotsForMixPlant].sort((a, b) => {
     const dateA = parseLocalDate(a.createdDate);
     const dateB = parseLocalDate(b.createdDate);
     if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
@@ -953,7 +967,7 @@ function findSampleDate(ledger, sampleCt, lot) {
 
   // If not found in ledger (e.g., RENEWAL allocations), find from shifts directly
   if (lot) {
-    const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey);
+    const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey && normPlant(l.plant || '') === normPlant(lot.plant || ''));
     const sortedShifts = sortShifts(state.shifts);
     let cumulativeCt = 0;
 
@@ -999,7 +1013,7 @@ function lotWindow(lot, ledger, today) {
 // DERIVE: PURE COMPUTATION OF ALL DERIVED STATE
 // ============================================================================
 function derive(state, today = new Date(), skipReconcile = false) {
-  const ledgers = computeMixLedgers(state);
+  const ledgers = computeMixPlantLedgers(state);
 
   if (!skipReconcile) {
     reconcileLots(state, ledgers, today);
@@ -1008,17 +1022,17 @@ function derive(state, today = new Date(), skipReconcile = false) {
   // Pre-compute shift allocations to avoid duplicate splitShiftAcrossLots calls
   const shiftAllocations = {};
   const sortedShifts = sortShifts(state.shifts);
-  const mixTotals = {};
+  const mixPlantTotals = {};
 
   sortedShifts.forEach(shift => {
-    const key = normMix(shift.mix);
-    const lotsForMix = state.lots.filter(l => l.mixKey === key);
-    const mixTotalBefore = mixTotals[key] || 0;
-    const mixTotalAfter = mixTotalBefore + toCt(shift.tonsCt);
+    const key = normMix(shift.mix) + '|' + normPlant(shift.plant || '');
+    const lotsForMixPlant = state.lots.filter(l => l.mixKey === normMix(l.mix) && normPlant(l.plant || '') === normPlant(shift.plant || ''));
+    const mixPlantTotalBefore = mixPlantTotals[key] || 0;
+    const mixPlantTotalAfter = mixPlantTotalBefore + toCt(shift.tonsCt);
 
-    const splits = shift.bridge ? [] : splitShiftAcrossLots(mixTotalBefore, mixTotalAfter, lotsForMix, shift.date, today);
-    shiftAllocations[shift.id] = { splits, mixTotalBefore, mixTotalAfter };
-    mixTotals[key] = mixTotalAfter;
+    const splits = shift.bridge ? [] : splitShiftAcrossLots(mixPlantTotalBefore, mixPlantTotalAfter, lotsForMixPlant, shift.date, today);
+    shiftAllocations[shift.id] = { splits, mixPlantTotalBefore, mixPlantTotalAfter };
+    mixPlantTotals[key] = mixPlantTotalAfter;
   });
 
   state.lots.forEach(lot => {
@@ -1056,13 +1070,13 @@ function derive(state, today = new Date(), skipReconcile = false) {
   const lotTotals = {};
 
   sortedShifts.forEach(shift => {
-    const key = normMix(shift.mix);
+    const key = normMix(shift.mix) + '|' + normPlant(shift.plant || '');
     const splits = shiftAllocations[shift.id].splits;
 
     if (shift.bridge) {
       shiftRows.push({
         shift,
-        mixTotal: 0,
+        mixPlantTotal: 0,
         splits: [],
         splitAmount: toCt(shift.tonsCt),
         splitLotNo: null
@@ -1070,7 +1084,7 @@ function derive(state, today = new Date(), skipReconcile = false) {
     } else if (splits.length === 0) {
       shiftRows.push({
         shift,
-        mixTotal: 0,
+        mixPlantTotal: 0,
         splits: [],
         splitAmount: toCt(shift.tonsCt),
         splitLotNo: null
@@ -1081,7 +1095,7 @@ function derive(state, today = new Date(), skipReconcile = false) {
         lotTotals[lotKey] = (lotTotals[lotKey] || 0) + split.ct;
         shiftRows.push({
           shift,
-          mixTotal: lotTotals[lotKey],
+          mixPlantTotal: lotTotals[lotKey],
           splits: splits,
           splitAmount: split.ct,
           splitLotNo: split.lotNo
@@ -1134,7 +1148,7 @@ function derive(state, today = new Date(), skipReconcile = false) {
   });
 
   state.lots.forEach(lot => {
-    const key = normMix(lot.mix);
+    const key = normMix(lot.mix) + '|' + normPlant(lot.plant || '');
     if (!summary[key]) summary[key] = { total: 0, lots: [] };
     if (!summary[key].lots.find(l => l.index === lot.index)) {
       summary[key].lots.push({ lot, taken: 0, due: 0, waiting: 0, pending: 0 });
@@ -1142,7 +1156,7 @@ function derive(state, today = new Date(), skipReconcile = false) {
   });
 
   sampleRows.forEach(row => {
-    const key = normMix(row.lot.mix);
+    const key = normMix(row.lot.mix) + '|' + normPlant(row.lot.plant || '');
     const lotSummary = summary[key].lots.find(l => l.lot.lotNo === row.lot.lotNo);
     if (lotSummary) {
       if (row.sample.taken) lotSummary.taken++;
@@ -1178,6 +1192,7 @@ function rowsToState(settingsRow, lotsRows, shiftsRows, samplesRows) {
         lotNo: lotRow.lot_no,
         index: lotRow.idx,
         mix: lotRow.mix,
+        plant: lotRow.plant || '',
         mixKey: lotRow.mix_key,
         createdDate: lotRow.created_date,
         expirationDate: lotRow.expiration_date,
@@ -1207,6 +1222,7 @@ function rowsToState(settingsRow, lotsRows, shiftsRows, samplesRows) {
       id: row.id,
       date: row.date,
       mix: row.mix,
+      plant: row.plant || '',
       tonsCt: row.tons_ct,
       locations: row.locations || '',
       bridge: row.bridge_deck ?? false,
@@ -1256,6 +1272,7 @@ async function persistState() {
         lot_no: lot.lotNo,
         idx: lot.index,
         mix: lot.mix,
+        plant: lot.plant || '',
         mix_key: lot.mixKey,
         created_date: lot.createdDate,
         expiration_date: lot.expirationDate,
@@ -1276,6 +1293,7 @@ async function persistState() {
         id: shift.id,
         date: shift.date,
         mix: shift.mix,
+        plant: shift.plant || '',
         tons_ct: shift.tonsCt,
         locations: shift.locations || null,
         bridge_deck: shift.bridge ?? false,
@@ -1365,28 +1383,30 @@ function migrateState(loaded) {
 
   // Ensure lots have all required fields for reconcileLots to work correctly
   if (Array.isArray(migrated.lots) && migrated.lots.length > 0) {
-    const lotsByMix = {};
+    const lotsByMixPlant = {};
     migrated.lots.forEach(lot => {
       lot.mixKey = lot.mixKey || normMix(lot.mix);
+      lot.plant = lot.plant || '';  // Ensure plant field exists
       if (!lot.windowStartDate && lot.createdDate) {
         lot.windowStartDate = lot.createdDate;
       }
       if (!lot.expirationDate && lot.windowStartDate) {
         lot.expirationDate = addDays(lot.windowStartDate, WINDOW_DAYS);
       }
-      // Group by mix to auto-assign indices if missing
-      if (!lotsByMix[lot.mixKey]) lotsByMix[lot.mixKey] = [];
-      lotsByMix[lot.mixKey].push(lot);
+      // Group by mix+plant to auto-assign indices if missing
+      const key = lot.mixKey + '|' + normPlant(lot.plant || '');
+      if (!lotsByMixPlant[key]) lotsByMixPlant[key] = [];
+      lotsByMixPlant[key].push(lot);
     });
 
-    // Assign indices by position within each mix if not present, detect duplicates
-    Object.keys(lotsByMix).forEach(mix => {
-      lotsByMix[mix].sort((a, b) => (a.lotNo || 0) - (b.lotNo || 0));
+    // Assign indices by position within each mix+plant if not present, detect duplicates
+    Object.keys(lotsByMixPlant).forEach(key => {
+      lotsByMixPlant[key].sort((a, b) => (a.lotNo || 0) - (b.lotNo || 0));
       const seenIndices = new Set();
-      lotsByMix[mix].forEach((lot, idx) => {
+      lotsByMixPlant[key].forEach((lot, idx) => {
         // Force correct index assignment to prevent duplicates
         if (lot.index !== undefined && seenIndices.has(lot.index)) {
-          console.warn(`Duplicate index ${lot.index} in mix ${mix}, fixing Lot ${lot.lotNo}`);
+          console.warn(`Duplicate index ${lot.index} in mix+plant ${key}, fixing Lot ${lot.lotNo}`);
           lot.index = idx;
         } else if (lot.index === undefined) {
           lot.index = idx;
@@ -1624,17 +1644,17 @@ async function commit() {
   await persistState(); // Then persist to Supabase (Phase 4)
 }
 
-async function addShift(date, mix, tons, locations, bridge) {
-  if (!date || !mix || !tons) {
-    showBanner('Date, mix, and tons are required', 'error');
+async function addShift(date, mix, plant, tons, locations, bridge) {
+  if (!date || !mix || !plant || !tons) {
+    showBanner('Date, mix, plant, and tons are required', 'error');
     return;
   }
 
-  console.log(`addShift called: date=${date}, mix=${mix}, tons=${tons}`);
+  console.log(`addShift called: date=${date}, mix=${mix}, plant=${plant}, tons=${tons}`);
 
   // SAFEGUARD: Block duplicate rapid submissions (< 50ms apart with same data)
   const now = Date.now();
-  const currentData = `${date}|${mix}|${tons}`;
+  const currentData = `${date}|${mix}|${plant}|${tons}`;
   if (addShift.lastTime && now - addShift.lastTime < 50 && addShift.lastData === currentData) {
     console.warn(`⚠ DUPLICATE BLOCKED: Same shift twice within 50ms`);
     return;
@@ -1654,6 +1674,7 @@ async function addShift(date, mix, tons, locations, bridge) {
     seq: state.nextSeq++,
     date,
     mix: mix.trim(),
+    plant: plant.trim(),
     tonsCt: parseFloat(tons),
     locations: (locations || '').trim(),
     bridge: !!bridge
@@ -1662,11 +1683,12 @@ async function addShift(date, mix, tons, locations, bridge) {
   await commit();
 }
 
-async function editShift(id, date, mix, tons, locations, bridge) {
+async function editShift(id, date, mix, plant, tons, locations, bridge) {
   const shift = state.shifts.find(s => s.id === id);
   if (shift) {
     shift.date = date;
     shift.mix = mix.trim();
+    shift.plant = plant.trim();
     shift.tonsCt = parseFloat(tons);
     shift.locations = (locations || '').trim();
     shift.bridge = !!bridge;
@@ -1686,17 +1708,18 @@ function getNextLotNo() {
   return maxLotNo + 1;
 }
 
-async function createLot(mix, lotNo) {
-  const key = normMix(mix);
-  const lotsForMix = state.lots.filter(l => l.mixKey === key);
-  const maxIndex = lotsForMix.length > 0 ? Math.max(...lotsForMix.map(l => l.index)) : -1;
+async function createLot(mix, plant, lotNo) {
+  const key = normMix(mix) + '|' + normPlant(plant || '');
+  const lotsForMixPlant = state.lots.filter(l => l.mixKey === normMix(l.mix) && normPlant(l.plant || '') === normPlant(plant || ''));
+  const maxIndex = lotsForMixPlant.length > 0 ? Math.max(...lotsForMixPlant.map(l => l.index)) : -1;
 
   const nextLotNo = lotNo || getNextLotNo();
   const createdDate = fmtLocalDate(new Date());
   const newLot = {
     lotNo: nextLotNo,
     mix,
-    mixKey: key,
+    plant: plant || '',
+    mixKey: normMix(mix),
     index: maxIndex + 1,
     createdBy: 'manual',
     createdDate,
@@ -1779,6 +1802,7 @@ function render() {
   renderShiftTable(derived);
   renderAnnualSummary(derived);
   updateMixList();
+  updatePlantList();
   updateLotInfo();
 }
 
@@ -1831,7 +1855,7 @@ function renderSamplingTable(derived) {
 
       let headerHtml = `<tr class="lot-header">
         <td colspan="8">
-          <strong>Lot ${lot.lotNo} (${lot.mix}, index ${lot.index})</strong>
+          <strong>Lot ${lot.lotNo} (${lot.mix}, ${lot.plant || '—'}, index ${lot.index})</strong>
           <button class="secondary" style="margin-left: 16px; padding: 4px 8px; font-size: 0.8rem;" onclick="generateSamples(${lot.lotNo})">
             Generate samples
           </button>`;
@@ -1872,7 +1896,7 @@ function renderShiftTable(derived) {
 
   derived.shiftRows.forEach((row, idx) => {
     const shift = row.shift;
-    const total = fmtTons(row.mixTotal);
+    const total = fmtTons(row.mixPlantTotal);
     const bridge = shift.bridge ? 'Yes (excluded)' : '—';
     const splitAmount = fmtTons(row.splitAmount);
     const displayAmount = row.splitLotNo ? splitAmount : shift.tonsCt;
@@ -1887,6 +1911,7 @@ function renderShiftTable(derived) {
     tbody.innerHTML += `<tr>
       <td>${shift.date}</td>
       <td>${shift.mix}</td>
+      <td>${shift.plant || '—'}</td>
       <td>${displayAmount}${lotInfo}</td>
       <td>${total}</td>
       <td>${shift.locations || '—'}</td>
@@ -1895,7 +1920,7 @@ function renderShiftTable(derived) {
         <button class="secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editShiftUI('${shift.id}')">Edit</button>
         <button class="danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="if (confirm('Delete this shift?')) deleteShift('${shift.id}')">Delete</button>
       </td>
-    </tr>${splitNote ? '<tr><td colspan="7">' + splitNote + '</td></tr>' : ''}`;
+    </tr>${splitNote ? '<tr><td colspan="8">' + splitNote + '</td></tr>' : ''}`;
   });
 }
 
@@ -1951,11 +1976,18 @@ function updateMixList() {
   list.innerHTML = mixes.map(m => `<option value="${m}">`).join('');
 }
 
+function updatePlantList() {
+  const plants = [...new Set(state.shifts.map(s => s.plant).filter(p => p))];
+  const list = document.getElementById('plantList');
+  list.innerHTML = plants.map(p => `<option value="${p}">`).join('');
+}
+
 let editingShiftId = null;
 
 function resetShiftForm() {
   document.getElementById('shiftDate').value = '';
   document.getElementById('shiftMix').value = '';
+  document.getElementById('shiftPlant').value = '';
   document.getElementById('shiftTons').value = '';
   document.getElementById('shiftLocations').value = '';
   document.getElementById('shiftBridge').checked = false;
@@ -1978,6 +2010,7 @@ function editShiftUI(id) {
 
   document.getElementById('shiftDate').value = shift.date;
   document.getElementById('shiftMix').value = shift.mix;
+  document.getElementById('shiftPlant').value = shift.plant || '';
   document.getElementById('shiftTons').value = shift.tonsCt;
   document.getElementById('shiftLocations').value = shift.locations || '';
   document.getElementById('shiftBridge').checked = shift.bridge;
@@ -2005,9 +2038,9 @@ function exportCSV() {
 
   // Shift Log
   csv += 'SHIFT LOG\n';
-  csv += 'Date,Mix,Shift Tons,Total Lot Tons,Bridge\n';
+  csv += 'Date,Mix,Plant,Shift Tons,Total Lot Tons,Bridge\n';
   derived.shiftRows.forEach(row => {
-    csv += `${row.shift.date},${escapeCSV(row.shift.mix)},${fmtTons(row.shift.tonsCt)},${fmtTons(row.mixTotal)},${row.shift.bridge ? 'Yes' : ''}\n`;
+    csv += `${row.shift.date},${escapeCSV(row.shift.mix)},${escapeCSV(row.shift.plant || '')},${fmtTons(row.shift.tonsCt)},${fmtTons(row.mixPlantTotal)},${row.shift.bridge ? 'Yes' : ''}\n`;
   });
 
   // Blank line separator
@@ -2270,24 +2303,26 @@ function importJSON() {
 
         // Ensure lots have all required fields for reconcileLots to work correctly
         if (Array.isArray(imported.lots)) {
-          const lotsByMix = {};
+          const lotsByMixPlant = {};
           imported.lots.forEach(lot => {
             lot.mixKey = lot.mixKey || normMix(lot.mix);
+            lot.plant = lot.plant || '';  // Ensure plant field exists
             if (!lot.windowStartDate && lot.createdDate) {
               lot.windowStartDate = lot.createdDate;
             }
             if (!lot.expirationDate && lot.windowStartDate) {
               lot.expirationDate = addDays(lot.windowStartDate, WINDOW_DAYS);
             }
-            // Group by mix to auto-assign indices if missing
-            if (!lotsByMix[lot.mixKey]) lotsByMix[lot.mixKey] = [];
-            lotsByMix[lot.mixKey].push(lot);
+            // Group by mix+plant to auto-assign indices if missing
+            const key = lot.mixKey + '|' + normPlant(lot.plant || '');
+            if (!lotsByMixPlant[key]) lotsByMixPlant[key] = [];
+            lotsByMixPlant[key].push(lot);
           });
 
-          // Assign indices by position within each mix if not present
-          Object.keys(lotsByMix).forEach(mix => {
-            lotsByMix[mix].sort((a, b) => (a.lotNo || 0) - (b.lotNo || 0));
-            lotsByMix[mix].forEach((lot, idx) => {
+          // Assign indices by position within each mix+plant if not present
+          Object.keys(lotsByMixPlant).forEach(key => {
+            lotsByMixPlant[key].sort((a, b) => (a.lotNo || 0) - (b.lotNo || 0));
+            lotsByMixPlant[key].forEach((lot, idx) => {
               if (lot.index === undefined) {
                 lot.index = idx;
               }
@@ -2353,19 +2388,21 @@ function importCSV() {
 
           const dateIdx = headers.indexOf('Date');
           const mixIdx = headers.indexOf('Mix');
+          const plantIdx = headers.indexOf('Plant');
           const tonsIdx = headers.indexOf('Shift Tons');
           const bridgeIdx = headers.indexOf('Bridge');
 
-          if (dateIdx === -1 || mixIdx === -1 || tonsIdx === -1) {
-            throw new Error('CSV must have Date, Mix, and Shift Tons columns');
+          if (dateIdx === -1 || mixIdx === -1 || plantIdx === -1 || tonsIdx === -1) {
+            throw new Error('CSV must have Date, Mix, Plant, and Shift Tons columns');
           }
 
           const date = parts[dateIdx];
           const mix = parts[mixIdx];
+          const plant = parts[plantIdx];
           const tons = parseFloat(parts[tonsIdx]);
           const bridge = parts[bridgeIdx] && parts[bridgeIdx].toLowerCase() === 'yes';
 
-          if (!date || !mix || isNaN(tons)) {
+          if (!date || !mix || !plant || isNaN(tons)) {
             console.warn(`Skipping invalid row: ${line}`);
             continue;
           }
@@ -2375,6 +2412,7 @@ function importCSV() {
             seq: seq++,
             date,
             mix,
+            plant,
             tonsCt: toCt(tons),
             bridge
           });
@@ -2431,16 +2469,17 @@ function loadExampleData() {
     nextSeq: 103,
     nextLotNo: 103,
     shifts: [
-      { id: 's1', seq: 100, date: '2026-06-30', mix: 'PMA0.5', tonsCt: 1081, bridge: false },
-      { id: 's2', seq: 101, date: '2026-07-05', mix: 'PMA0.5', tonsCt: 600, bridge: false },
-      { id: 's3', seq: 102, date: '2026-07-09', mix: 'PMA0.5', tonsCt: 1480, bridge: false },
-      { id: 's4', seq: 103, date: '2026-07-16', mix: 'PMA1.0', tonsCt: 860, bridge: false },
-      { id: 's5', seq: 104, date: '2026-07-21', mix: 'PMA0.5', tonsCt: 830, bridge: false }
+      { id: 's1', seq: 100, date: '2026-06-30', mix: 'PMA0.5', plant: 'Plant A', tonsCt: 1081, bridge: false },
+      { id: 's2', seq: 101, date: '2026-07-05', mix: 'PMA0.5', plant: 'Plant A', tonsCt: 600, bridge: false },
+      { id: 's3', seq: 102, date: '2026-07-09', mix: 'PMA0.5', plant: 'Plant A', tonsCt: 1480, bridge: false },
+      { id: 's4', seq: 103, date: '2026-07-16', mix: 'PMA1.0', plant: 'Plant B', tonsCt: 860, bridge: false },
+      { id: 's5', seq: 104, date: '2026-07-21', mix: 'PMA0.5', plant: 'Plant A', tonsCt: 830, bridge: false }
     ],
     lots: [
       {
         lotNo: 100,
         mix: 'PMA0.5',
+        plant: 'Plant A',
         mixKey: 'pma0.5',
         index: 0,
         createdBy: 'manual',
@@ -2458,6 +2497,7 @@ function loadExampleData() {
       {
         lotNo: 101,
         mix: 'PMA1.0',
+        plant: 'Plant B',
         mixKey: 'pma1.0',
         index: 0,
         createdBy: 'auto',
@@ -2475,6 +2515,7 @@ function loadExampleData() {
       {
         lotNo: 102,
         mix: 'PMA0.5',
+        plant: 'Plant A',
         mixKey: 'pma0.5',
         index: 1,
         createdBy: 'auto',
@@ -2517,12 +2558,13 @@ function runSelfTest() {
     settings: { startLotNo: 100 },
     nextSeq: 100,
     shifts: [
-      { id: 's1', seq: 100, date: '2026-01-01', mix: 'Test', tonsCt: 3133, bridge: false }
+      { id: 's1', seq: 100, date: '2026-01-01', mix: 'Test', plant: 'Plant A', tonsCt: 3133, bridge: false }
     ],
     lots: [
       {
         lotNo: 100,
         mix: 'Test',
+        plant: 'Plant A',
         mixKey: 'test',
         index: 0,
         createdBy: 'manual',
@@ -2560,8 +2602,8 @@ function runSelfTest() {
     settings: { startLotNo: 100 },
     nextSeq: 100,
     shifts: [
-      { id: 's1', seq: 100, date: '2026-01-01', mix: 'Test', tonsCt: 3300, bridge: false },
-      { id: 's2', seq: 101, date: '2026-01-02', mix: 'Test', tonsCt: 830, bridge: false }
+      { id: 's1', seq: 100, date: '2026-01-01', mix: 'Test', plant: 'Plant A', tonsCt: 3300, bridge: false },
+      { id: 's2', seq: 101, date: '2026-01-02', mix: 'Test', plant: 'Plant A', tonsCt: 830, bridge: false }
     ],
     lots: [],
     ui: {}
@@ -2577,7 +2619,7 @@ function runSelfTest() {
     settings: { startLotNo: 100 },
     nextSeq: 100,
     shifts: [
-      { id: 's1', seq: 100, date: '2026-01-01', mix: 'Test', tonsCt: 100, bridge: true }
+      { id: 's1', seq: 100, date: '2026-01-01', mix: 'Test', plant: 'Plant A', tonsCt: 100, bridge: true }
     ],
     lots: [],
     ui: {}
@@ -2887,6 +2929,7 @@ function attachAllButtonListeners() {
         editingShiftId,
         document.getElementById('shiftDate').value,
         document.getElementById('shiftMix').value,
+        document.getElementById('shiftPlant').value,
         document.getElementById('shiftTons').value,
         document.getElementById('shiftLocations').value,
         document.getElementById('shiftBridge').checked
@@ -2895,6 +2938,7 @@ function attachAllButtonListeners() {
       addShift(
         document.getElementById('shiftDate').value,
         document.getElementById('shiftMix').value,
+        document.getElementById('shiftPlant').value,
         document.getElementById('shiftTons').value,
         document.getElementById('shiftLocations').value,
         document.getElementById('shiftBridge').checked
@@ -2905,9 +2949,10 @@ function attachAllButtonListeners() {
 
   document.getElementById('newLotBtn').onclick = () => {
     const mix = prompt('Enter mix name (e.g., PMA0.5):');
-    if (mix) {
-      createLot(mix.trim());
-    }
+    if (!mix) return;
+    const plant = prompt('Enter plant name (e.g., Plant A):');
+    if (!plant) return;
+    createLot(mix.trim(), plant.trim());
   };
 
   document.getElementById('hideEmpty').onchange = render;
