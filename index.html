@@ -321,6 +321,7 @@
       align-items: center;
       justify-content: center;
       z-index: 50000;
+      pointer-events: none;
     }
     .auth-modal-content {
       background: white;
@@ -330,6 +331,7 @@
       max-width: 400px;
       width: 90%;
       text-align: center;
+      pointer-events: auto;
     }
     .auth-modal-content h2 {
       margin: 0 0 10px 0;
@@ -823,15 +825,21 @@ function reconcileLots(state, ledgers, today = new Date()) {
       if (existing.some(l => l.index === idx)) continue;
 
       if (state.nextLotNo === undefined) {
-        state.nextLotNo = Math.max(...state.lots.map(l => l.lotNo), state.settings.startLotNo - 1) + 1;
+        const existingLotNos = new Set(state.lots.map(l => l.lotNo));
+        const startLotNo = state.settings.startLotNo || 100;
+        let newLotNo = startLotNo;
+        while (existingLotNos.has(newLotNo)) {
+          newLotNo++;
+        }
+        state.nextLotNo = newLotNo;
+      }
+
+      // Find next available lot number (skip any that already exist)
+      while (state.lots.some(l => l.lotNo === state.nextLotNo)) {
+        state.nextLotNo++;
       }
       const nextLotNo = state.nextLotNo;
-
-      // Double-check: ensure this lotNo doesn't already exist in state.lots
-      if (state.lots.some(l => l.lotNo === nextLotNo)) {
-        state.nextLotNo = nextLotNo + 1;
-        continue;
-      }
+      console.log(`reconcileLots: key=${key}, idx=${idx}, nextLotNo=${nextLotNo}, state.lots=${state.lots.map(l => `${l.lotNo}(${l.mixKey})`).join(', ')}`);
 
       const lotRange = { start: toCt(idx * LOT_TONS), end: toCt((idx + 1) * LOT_TONS) };
       const shiftsInRange = ledger.filter(e => !e.excluded && e.beforeCt < lotRange.end && e.afterCt > lotRange.start);
@@ -885,18 +893,11 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMixPlant, shiftDate = nu
     return a.lotNo - b.lotNo;
   });
 
-  // Calculate current tonnage in each lot based on beforeCt and lot capacity
-  let cumulativeSoFar = 0;
+  // Use actual currentTonnage from each lot object (tracks real accumulated tonnage)
   const lotTonnage = {};
 
   for (const lot of sorted) {
-    const lotCapacity = toCt(LOT_TONS);
-    if (cumulativeSoFar >= beforeCt) {
-      lotTonnage[lot.lotNo] = 0;
-    } else {
-      lotTonnage[lot.lotNo] = Math.min(beforeCt - cumulativeSoFar, lotCapacity);
-      cumulativeSoFar += lotTonnage[lot.lotNo];
-    }
+    lotTonnage[lot.lotNo] = lot.currentTonnage || 0;
   }
 
   const result = [];
@@ -1015,9 +1016,15 @@ function lotWindow(lot, ledger, today) {
 function derive(state, today = new Date(), skipReconcile = false) {
   const ledgers = computeMixPlantLedgers(state);
 
-  if (!skipReconcile) {
-    reconcileLots(state, ledgers, today);
-  }
+  // Disable upfront reconcileLots — let auto-creation handle new lots on-demand
+  // if (!skipReconcile) {
+  //   reconcileLots(state, ledgers, today);
+  // }
+
+  // Initialize currentTonnage for each lot (actual accumulated tonnage)
+  state.lots.forEach(lot => {
+    lot.currentTonnage = 0;
+  });
 
   // Pre-compute shift allocations to avoid duplicate splitShiftAcrossLots calls
   const shiftAllocations = {};
@@ -1030,9 +1037,62 @@ function derive(state, today = new Date(), skipReconcile = false) {
     const mixPlantTotalBefore = mixPlantTotals[key] || 0;
     const mixPlantTotalAfter = mixPlantTotalBefore + toCt(shift.tonsCt);
 
-    const splits = shift.bridge ? [] : splitShiftAcrossLots(mixPlantTotalBefore, mixPlantTotalAfter, lotsForMixPlant, shift.date, today);
+    let splits = shift.bridge ? [] : splitShiftAcrossLots(mixPlantTotalBefore, mixPlantTotalAfter, lotsForMixPlant, shift.date, today);
+
+    // Check for unallocated tonnage and auto-create new lot if needed
+    const shiftCt = toCt(shift.tonsCt);
+    const allocatedCt = splits.reduce((sum, s) => sum + s.ct, 0);
+    const unallocatedCt = shiftCt - allocatedCt;
+
+    if (unallocatedCt > 0 && !shift.bridge) {
+      console.log(`AUTO-CREATE: Unallocated ${unallocatedCt/100}t from shift, creating new lot`);
+
+      // Create new lot for overflow - find first missing lot number to fill gaps
+      const existingLotNos = new Set(state.lots.map(l => l.lotNo));
+      const startLotNo = state.settings.startLotNo || 100;
+      let newLotNo = startLotNo;
+      while (existingLotNos.has(newLotNo)) {
+        newLotNo++;
+      }
+      console.log(`allocateShifts auto-create: key=${key}, existing lots=${Array.from(existingLotNos).sort((a,b) => a-b).join(', ')}, newLotNo=${newLotNo}`);
+
+      const [mixKey, plantKey] = key.split('|');
+      const shiftForMixPlant = state.shifts.find(s => normMix(s.mix) + '|' + normPlant(s.plant || '') === key);
+      const maxIndex = Math.max(...lotsForMixPlant.map(l => l.index), -1);
+
+      const newLot = {
+        lotNo: newLotNo,
+        mix: shiftForMixPlant?.mix || '',
+        plant: shiftForMixPlant?.plant || '',
+        mixKey: mixKey,
+        index: maxIndex + 1,
+        createdBy: 'auto-overflow',
+        createdDate: shift.date,
+        windowStartDate: shift.date,
+        expirationDate: addDays(shift.date, WINDOW_DAYS),
+        currentTonnage: 0,
+        samples: Array(SUBLOTS_PER_LOT).fill(null).map(() => ({ tonCt: null, taken: false }))
+      };
+      state.lots.push(newLot);
+
+      // Allocate unallocated tonnage to the new lot
+      splits.push({ lotNo: newLotNo, ct: unallocatedCt });
+      console.log(`Created Lot ${newLotNo} for ${unallocatedCt/100}t overflow`);
+
+      // Update nextLotNo to keep it in sync with actual lot creation
+      state.nextLotNo = newLotNo + 1;
+    }
+
     shiftAllocations[shift.id] = { splits, mixPlantTotalBefore, mixPlantTotalAfter };
     mixPlantTotals[key] = mixPlantTotalAfter;
+
+    // Update actual currentTonnage for each lot after allocation
+    splits.forEach(split => {
+      const lot = state.lots.find(l => l.lotNo === split.lotNo);
+      if (lot) {
+        lot.currentTonnage = (lot.currentTonnage || 0) + split.ct;
+      }
+    });
   });
 
   state.lots.forEach(lot => {
@@ -1106,7 +1166,7 @@ function derive(state, today = new Date(), skipReconcile = false) {
 
   const sampleRows = [];
   state.lots.forEach(lot => {
-    const key = normMix(lot.mix);
+    const key = normMix(lot.mix) + '|' + normPlant(lot.plant || '');
     const ledger = ledgers[key] || [];
     const lotRange = lotRangeCt(lot);
     const lotTonnage = getLotTonnageFromLedger(lot, ledger);
@@ -1758,7 +1818,21 @@ async function generateSamples(lotNo, seed = null) {
 
 async function deleteLot(lotNo) {
   if (confirm(`Delete Lot ${lotNo}? This cannot be undone.`)) {
+    // Verify lot exists before deleting
+    const initialCount = state.lots.length;
     state.lots = state.lots.filter(l => l.lotNo !== lotNo);
+    const deleted = initialCount > state.lots.length;
+
+    if (!deleted) {
+      showBanner(`Lot ${lotNo} not found`, 'error');
+      return;
+    }
+
+    // Always reset nextLotNo when deleting a lot to enable proper gap-filling on next lot creation
+    state.nextLotNo = undefined;
+
+    console.log(`deleteLot: Deleted Lot ${lotNo}, existing lots now: ${state.lots.map(l => l.lotNo).sort((a,b) => a-b).join(', ')}`);
+
     await commit();
   }
 }
@@ -2437,18 +2511,26 @@ function importCSV() {
 }
 
 function clearAll() {
-  if (!confirm('Clear all data? This cannot be undone.')) return;
+  console.log('clearAll() called');
+  if (!confirm('Clear all data? This cannot be undone.')) {
+    console.log('User cancelled clear all');
+    return;
+  }
+  console.log('Clearing all data...');
   state = {
     version: 1,
     settings: { startLotNo: 100 },
     nextSeq: 100,
-    nextLotNo: 100,
+    nextLotNo: undefined,  // Reset to undefined for proper gap-filling on first lot creation
     shifts: [],
     lots: [],
     ui: { sortMode: 'date', filterLot: '', filterMix: '', hideEmpty: false }
   };
-  commit();
-  showBanner('All data cleared', 'success');
+  console.log('State reset, calling commit...');
+  saveState();  // Save to localStorage immediately
+  showBanner('All data cleared. Reloading...', 'success');
+  console.log('About to reload page');
+  setTimeout(() => location.reload(), 500);  // Reload after brief delay to show message
 }
 
 function hardReset() {
@@ -2981,7 +3063,8 @@ function attachAllButtonListeners() {
         return;
       }
       state.settings.startLotNo = newStart;
-      state.nextLotNo = newStart;
+      // Reset nextLotNo to recalculate from the new starting lot number on next lot creation
+      state.nextLotNo = undefined;
       saveState();
       updateLotInfo();
       showBanner(`Starting lot number updated to ${newStart}`, 'success');
@@ -3019,17 +3102,25 @@ function attachAllButtonListeners() {
 // INITIALIZATION
 // ============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Initialize Supabase client if enabled (Phase 1)
+  // Attach button listeners FIRST, before any async operations (so buttons always work)
+  attachAllButtonListeners();
+  console.log('✓ All button listeners attached');
+
+  // Initialize Supabase client if enabled (Phase 1) — do NOT block on this
   if (BACKEND === 'supabase' && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase client initialized');
+    try {
+      if (!window.supabase) {
+        console.error('Supabase library not loaded from CDN');
+      } else {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✓ Supabase client initialized');
+      }
+    } catch (e) {
+      console.error('Supabase init error:', e);
+    }
   } else if (BACKEND === 'supabase') {
     console.warn('BACKEND=supabase but SUPABASE_URL or SUPABASE_ANON_KEY not configured');
-    showBanner('Supabase not configured. Using localStorage.', 'error');
   }
-
-  // Attach button listeners early, before auth check (so buttons always work)
-  attachAllButtonListeners();
 
   // Check authentication (NEW: Auth required)
   const isAuthed = await checkAuth();
