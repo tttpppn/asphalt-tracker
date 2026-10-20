@@ -2274,8 +2274,11 @@ async function restoreFromBackup() {
       return;
     }
 
-    // Filter out folders, keep only files
-    files = files.filter(f => !f.is_folder);
+    console.log('Backup files:', files);
+    console.log('File structure:', files[0]);
+
+    // Filter out folders, keep only files (name should end with .json for backup files)
+    files = files.filter(f => !f.is_folder && f.name && f.name.endsWith('.json'));
     if (files.length === 0) {
       showBanner('No backup files found', 'error');
       return;
