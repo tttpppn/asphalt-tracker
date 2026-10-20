@@ -2510,27 +2510,50 @@ function importCSV() {
   input.click();
 }
 
-function clearAll() {
+async function clearAll() {
   console.log('clearAll() called');
   if (!confirm('Clear all data? This cannot be undone.')) {
     console.log('User cancelled clear all');
     return;
   }
   console.log('Clearing all data...');
+
+  // Clear from Supabase first (if available)
+  if (BACKEND === 'supabase' && supabase) {
+    try {
+      console.log('Deleting data from Supabase...');
+      // Delete all samples, shifts, lots, then reset settings
+      const { error: samplesError } = await supabase.from('samples').delete().neq('lot_no', -1);
+      if (samplesError) console.error('Error deleting samples:', samplesError);
+
+      const { error: shiftsError } = await supabase.from('shifts').delete().neq('id', null);
+      if (shiftsError) console.error('Error deleting shifts:', shiftsError);
+
+      const { error: lotsError } = await supabase.from('lots').delete().neq('lot_no', -1);
+      if (lotsError) console.error('Error deleting lots:', lotsError);
+
+      console.log('Supabase data cleared');
+    } catch (e) {
+      console.error('Error clearing Supabase:', e);
+      // Continue anyway - still clear localStorage
+    }
+  }
+
+  // Clear local state
   state = {
     version: 1,
     settings: { startLotNo: 100 },
     nextSeq: 100,
-    nextLotNo: undefined,  // Reset to undefined for proper gap-filling on first lot creation
+    nextLotNo: undefined,
     shifts: [],
     lots: [],
     ui: { sortMode: 'date', filterLot: '', filterMix: '', hideEmpty: false }
   };
-  console.log('State reset, calling commit...');
-  saveState();  // Save to localStorage immediately
+  console.log('State reset');
+  saveState();  // Save empty state to localStorage
   showBanner('All data cleared. Reloading...', 'success');
   console.log('About to reload page');
-  setTimeout(() => location.reload(), 500);  // Reload after brief delay to show message
+  setTimeout(() => location.reload(), 500);
 }
 
 function hardReset() {
