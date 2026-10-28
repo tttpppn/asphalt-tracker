@@ -83,6 +83,41 @@ ALTER TABLE samples DISABLE ROW LEVEL SECURITY;
 - Mark samples as **"Taken"** by clicking the checkbox
 - Export data as CSV or JSON for further analysis
 
+## 📥 Data Import/Export
+
+### Export Data as JSON
+For users who want to manage data locally or back up their work:
+
+1. Click **"Settings"** (⚙️ icon)
+2. Click **"Export as JSON"**
+3. A `.json` file downloads with all your data (lots, shifts, samples, settings)
+
+**Use cases:**
+- Local backup before major changes
+- Migrating data to another machine
+- Archiving historical projects
+- Sharing data with team members
+
+### Import JSON Data
+To restore or load previously exported data:
+
+1. Click **"Settings"** (⚙️ icon)
+2. Click **"Import JSON"**
+3. Select a `.json` file from your computer
+4. Click **Confirm** to load the data
+
+**Important:**
+- Importing will **merge** data with existing records (does not overwrite)
+- Lot numbers are deduped automatically
+- Timestamps are preserved from the export
+
+### Export Data as CSV
+For analysis in spreadsheets or external tools:
+
+1. Click **"Export as CSV"** (available on Lots or Samples views)
+2. A `.csv` file downloads with tabular data
+3. Open in Excel, Google Sheets, or any spreadsheet app
+
 ## 🏗️ Architecture
 
 ### Frontend
