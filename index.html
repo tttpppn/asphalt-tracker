@@ -5,570 +5,486 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PWL Asphalt Sampling Tracker - Updated</title>
   <style>
+    :root {
+      --bg: #eef1f4;
+      --surface: #ffffff;
+      --line: #dde2e8;
+      --line-strong: #c3cbd5;
+      --text: #1b2430;
+      --muted: #5f6b7a;
+      --faint: #8a95a3;
+      --header: #1c2733;
+      --accent: #1f4e8c;
+      --accent-tint: #edf2f9;
+      --ok: #1f7a4a;
+      --danger: #b3261e;
+      --warn: #8a5a00;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      line-height: 1.6;
-      color: #2c3e50;
-      background: #ecf0f1;
-      padding: 20px;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+      font-size: 13.5px;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.4;
     }
-    .container { max-width: 1600px; margin: 0 auto; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .spacer { flex: 1; }
+    .muted { color: var(--faint); }
 
-    h1 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
-      color: #1a5490;
-      font-weight: 700;
+    /* App bar */
+    .appbar {
+      height: 48px;
+      background: var(--header);
+      color: #e8edf2;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
-    h2 {
-      font-size: 1.2rem;
-      margin: 1.2rem 0 0.8rem 0;
-      font-weight: 600;
-      color: #2c3e50;
-      border-bottom: 2px solid #3498db;
-      padding-bottom: 0.4rem;
+    .mark {
+      width: 28px; height: 28px;
+      border: 1.5px solid #8fa6c2;
+      display: grid; place-items: center;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+      color: #cfdbe8;
     }
+    .appname { font-weight: 600; font-size: 14px; letter-spacing: 0.2px; }
+    .appbar-actions { display: flex; align-items: center; gap: 12px; }
+    .status { font-size: 12px; color: #a9b6c4; display: flex; align-items: center; gap: 6px; }
+    .status i { width: 7px; height: 7px; background: #4cc282; border-radius: 50%; display: inline-block; }
+    .status i.off { background: #d9a441; }
+    .bar-btn {
+      font: inherit; font-size: 12.5px;
+      color: #e8edf2; background: transparent;
+      border: 1px solid #3a4858; border-radius: 3px;
+      padding: 5px 12px; cursor: pointer;
+    }
+    .bar-btn:hover { background: #263444; }
 
+    .menu { position: relative; }
+    .menu-list, .lot-menu-list {
+      display: none; position: absolute; right: 0; top: calc(100% + 4px); z-index: 30;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--line-strong); border-radius: 3px;
+      box-shadow: 0 6px 18px rgba(16, 24, 40, 0.14);
+      min-width: 210px; padding: 4px 0;
+    }
+    .menu.open .menu-list, .lot-menu.open .lot-menu-list { display: block; }
+    .menu-list .grp { padding: 6px 14px 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--faint); }
+    .menu-list button, .lot-menu-list button {
+      display: block; width: 100%; text-align: left;
+      font: inherit; font-size: 13px; background: none; border: 0; color: inherit;
+      padding: 6px 14px; cursor: pointer;
+    }
+    .menu-list button:hover, .lot-menu-list button:hover { background: var(--accent-tint); }
+    .menu-list hr, .lot-menu-list hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+    .menu-list .danger, .lot-menu-list .danger { color: var(--danger); }
+
+    main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 32px; }
+
+    /* Banner */
     .banner {
-      padding: 14px 16px;
-      margin-bottom: 20px;
-      border-radius: 6px;
-      background: #fff3cd;
-      border-left: 5px solid #ff9800;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
     }
-    .banner.error { background: #f8d7da; border-left-color: #dc3545; color: #721c24; font-weight: 500; }
-    .banner.success { background: #d4edda; border-left-color: #28a745; color: #155724; font-weight: 500; }
+    .banner.error { border-left-color: var(--danger); color: var(--danger); }
+    .banner.success { border-left-color: var(--ok); color: var(--ok); }
 
-    .summary-box {
-      background: white;
-      padding: 20px;
-      margin-bottom: 20px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .summary-line {
-      margin: 0.8rem 0;
-      font-size: 0.95rem;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .summary-line strong {
-      display: inline-block;
-      min-width: 140px;
-      color: #34495e;
-      font-weight: 600;
-    }
-    .summary-line span {
-      color: #2c3e50;
-    }
-
-    .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    @media (max-width: 1100px) {
-      .wrap { grid-template-columns: 1fr; }
-    }
-
-    section {
-      background: white;
-      padding: 20px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
+    /* Title block */
+    .titleblock {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--accent);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 16px;
+      padding: 16px 20px;
       margin-bottom: 16px;
     }
-    table th:nth-child(3),
-    table td:nth-child(3) {
-      min-width: 100px;
-      text-align: center;
+    .crumb { font-size: 11px; text-transform: uppercase; letter-spacing: 0.9px; color: var(--faint); }
+    h1 { font-size: 20px; font-weight: 600; margin-top: 2px; }
+    .params { display: flex; border: 1px solid var(--line); }
+    .param { padding: 6px 14px; border-left: 1px solid var(--line); }
+    .param:first-child { border-left: 0; }
+    .param .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--faint); }
+    .param .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    /* Settings */
+    .settings {
+      display: none;
+      align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--line);
+      padding: 10px 16px; margin-bottom: 16px;
     }
+    .settings.open { display: flex; }
+    .settings label { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 12.5px; }
+    .settings input { width: 90px; }
+    .settings .meta { color: var(--faint); font-size: 12px; }
+
+    /* Metrics strip */
+    .metrics {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 1px; background: var(--line); border: 1px solid var(--line);
+      margin-bottom: 16px;
+    }
+    .metric { background: var(--surface); padding: 12px 20px; }
+    .metric .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+    .metric .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .metric .v small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+    .metric .s { font-size: 12px; color: var(--faint); }
+
+    /* Panels */
+    .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
+    .panel { background: var(--surface); border: 1px solid var(--line); }
+    .panel-hd {
+      display: flex; align-items: center; gap: 10px;
+      height: 42px; padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-hd h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; }
+    .panel-hd .meta { font-size: 12px; color: var(--faint); }
+    .btn {
+      font: inherit; font-size: 12.5px;
+      border: 1px solid var(--line-strong); border-radius: 3px;
+      background: var(--surface); color: var(--text);
+      padding: 5px 12px; cursor: pointer;
+    }
+    .btn:hover { background: #f5f7f9; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #193f72; }
+
+    .filters {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      padding: 8px 16px; border-bottom: 1px solid var(--line); background: #f8f9fb;
+    }
+    input, select {
+      font: inherit; font-size: 13px;
+      height: 30px; padding: 0 8px;
+      border: 1px solid var(--line-strong); border-radius: 3px;
+      background: var(--surface); color: var(--text);
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-tint); }
+    input[type="checkbox"] { height: 14px; width: 14px; accent-color: var(--accent); }
+    .chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+
+    .scroll { max-height: 640px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
     th {
-      background: #ecf0f1;
-      border: 1px solid #bdc3c7;
-      padding: 12px 8px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: #2c3e50;
+      position: sticky; top: 0; z-index: 1;
+      background: #f8f9fb;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--muted); text-align: left;
+      padding: 8px 16px; border-bottom: 1px solid var(--line-strong);
     }
-    td {
-      border: 1px solid #ecf0f1;
-      padding: 10px 8px;
-      color: #2c3e50;
-    }
-    tbody tr:hover { background: #f8f9fa; }
-    tbody tr:nth-child(even) { background: #f9fafb; }
+    td { padding: 7px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    tbody tr.row:hover td { background: #f8fafc; }
 
-    .lot-header {
-      background: #d6eaf8;
-      font-weight: 600;
-      color: #1a5490;
-    }
-    .lot-header td {
-      border-bottom: 2px solid #3498db;
-      font-weight: 600;
-    }
-
-    input[type="text"],
-    input[type="number"],
-    input[type="date"],
-    select {
-      font-family: inherit;
-      font-size: 0.9rem;
-      padding: 8px 12px;
-      border: 1px solid #bdc3c7;
-      border-radius: 4px;
-      background: white;
-      transition: all 0.2s ease;
-    }
-    input[type="text"]:focus,
-    input[type="number"]:focus,
-    input[type="date"]:focus,
-    select:focus {
-      outline: none;
-      border-color: #3498db;
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-    }
-
-    button {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 4px;
+    /* Lot heading row — fixed columns so every heading lines up */
+    tr.lot td {
+      background: var(--accent-tint);
+      border-top: 1px solid #d3deec;
+      border-bottom: 1px solid #d3deec;
+      padding: 8px 16px;
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-right: 8px;
-      margin-bottom: 8px;
-      transition: all 0.2s ease;
     }
-    button:hover { background: #2980b9; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-    button:active { transform: translateY(0); }
-    button:disabled { background: #95a5a6; cursor: not-allowed; }
-    button.secondary {
-      background: #7f8c8d;
-      color: white;
+    .lot-line { display: grid; grid-template-columns: 14px 56px minmax(0, 170px) minmax(124px, 1fr) 64px 24px; align-items: center; gap: 10px; }
+    .caret { color: var(--accent); font-size: 10px; transition: transform 0.15s; }
+    tr.lot.collapsed .caret { transform: rotate(-90deg); }
+    .lot-id { font-weight: 700; color: var(--accent); letter-spacing: 0.2px; }
+    .lot-desc { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+    .gauge { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .gauge .track { flex: 0 0 56px; height: 4px; background: #cfd9e6; }
+    .gauge .fill { display: block; height: 100%; background: var(--accent); }
+    .gauge .amt { width: 60px; text-align: right; }
+    .tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; }
+    .tag.closed { color: var(--faint); }
+    .tag.complete { color: var(--ok); }
+    .tag.open { color: var(--accent); }
+    .lot-menu { position: relative; }
+    .lot-menu-list { min-width: 170px; }
+    .more {
+      background: none; border: 0; cursor: pointer; color: var(--muted);
+      font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 3px;
     }
-    button.secondary:hover { background: #6c7a7c; }
-    button.danger {
-      background: #e74c3c;
-      color: white;
-    }
-    button.danger:hover { background: #c0392b; }
+    .more:hover, .lot-menu.open .more { background: #dfe7f2; color: var(--text); }
 
-    .warning {
-      color: #e74c3c;
-      font-size: 0.85rem;
-      margin-top: 4px;
-      font-weight: 500;
-    }
-    .sublot-form {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .sublot-form input { width: 80px; }
+    .sample-input { width: 90px; height: 26px; text-align: right; font-variant-numeric: tabular-nums; }
+    .warning { color: var(--warn); font-size: 11.5px; margin-top: 2px; white-space: normal; }
 
-    .shift-form {
-      display: flex;
+    /* Shift entry */
+    .entry {
+      display: grid;
+      grid-template-columns: 140px 1fr 1fr 100px;
       gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f8f9fa;
-      border-radius: 4px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #f8f9fb;
     }
-    .shift-form input,
-    .shift-form select {
-      flex: 0 0 auto;
-    }
-    .shift-form input[type="text"],
-    .shift-form input[type="date"],
-    .shift-form input[type="number"] {
-      flex: 0 0 auto;
-    }
+    .field label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 3px; }
+    .field input { width: 100%; }
+    .field.wide { grid-column: span 2; }
+    .entry-actions { grid-column: span 2; display: flex; align-items: flex-end; justify-content: flex-end; gap: 14px; }
 
-    .status-pending {
-      background: #ecf0f1;
-      color: #7f8c8d;
-      font-weight: 500;
+    .lotref { color: var(--accent); font-weight: 600; }
+    td .sub { color: var(--faint); font-size: 12px; white-space: normal; }
+    .split td { color: var(--faint); font-size: 12px; padding-top: 0; }
+    .acts { text-align: right; }
+    .acts button {
+      background: none; border: 0; cursor: pointer; font: inherit; font-size: 12px;
+      color: var(--faint); padding: 2px 6px; visibility: hidden;
     }
-    .status-due {
-      background: #fadbd8;
-      color: #c0392b;
-      font-weight: 500;
-    }
-    .status-taken {
-      background: #d5f4e6;
-      color: #27ae60;
-      font-weight: 500;
-    }
+    tr.row:hover .acts button, .acts button:focus { visibility: visible; }
+    .acts button:hover { color: var(--accent); }
+    .acts button.del:hover { color: var(--danger); }
 
-    .split-note {
-      font-size: 0.85rem;
-      color: #7f8c8d;
-      margin-top: 6px;
-      padding: 8px 12px;
-      background: #fff3cd;
-      border-left: 4px solid #ff9800;
-      border-radius: 3px;
-    }
+    .annual { margin-top: 16px; }
+    .annual .scroll { max-height: none; overflow-x: auto; }
 
-    .controls {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-    .controls label {
-      margin-right: 8px;
-      font-weight: 500;
-      color: #2c3e50;
-    }
-    .controls input[type="checkbox"] {
-      margin-right: 6px;
-      cursor: pointer;
-      width: 18px;
-      height: 18px;
-    }
+    /* Self-test results */
+    .summary-box { background: var(--surface); border: 1px solid var(--line); padding: 12px 16px; margin-top: 16px; }
+    .summary-box h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 6px; }
+    .summary-line { padding: 2px 0; }
 
-    .footer {
-      text-align: center;
+    .quote {
+      margin-top: 24px;
+      display: flex; align-items: center; justify-content: center; gap: 20px;
       padding: 20px;
-      font-size: 0.85rem;
-      color: #7f8c8d;
-      background: white;
-      border-top: 1px solid #ddd;
-      margin-top: 20px;
+      background: var(--surface); border: 1px solid var(--line);
     }
-    .footer code {
-      background: #ecf0f1;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-family: "Monaco", "Courier New", monospace;
-      font-size: 0.8rem;
+    .quote img { width: 88px; height: 88px; object-fit: cover; border: 1px solid var(--line); filter: grayscale(100%); }
+    .quote p { font-size: 17px; font-style: italic; color: var(--text); max-width: 560px; }
+    .quote figcaption { margin-top: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+
+    footer {
+      margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-strong);
+      display: flex; justify-content: space-between; color: var(--faint); font-size: 11.5px;
     }
 
-    .regen-warning {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      padding: 10px 12px;
-      border-radius: 4px;
-      margin-bottom: 12px;
-      font-size: 0.85rem;
-      color: #856404;
-      font-weight: 500;
+    /* Sign-in and recovery dialogs */
+    .auth-modal {
+      position: fixed; inset: 0;
+      background: rgba(28, 39, 51, 0.72);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50000;
     }
-
-    /* MOBILE RESPONSIVE */
-    @media (max-width: 768px) {
-      body { padding: 12px; }
-      h1 { font-size: 1.4rem; }
-      .wrap { grid-template-columns: 1fr; gap: 12px; }
-      section { padding: 12px; }
-
-      table thead { display: none; }
-      table tr { display: block; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 12px; padding: 12px; background: white; }
-      table td { display: block; border: none; padding: 8px 0; text-align: left; }
-      table td:before { content: attr(data-label); font-weight: 600; color: #34495e; display: block; font-size: 0.8rem; margin-bottom: 4px; }
-
-      .lot-header { background: #d6eaf8 !important; }
-      .lot-header td { border: none !important; }
-      .lot-header td:before { display: none; }
-
-      .shift-form { flex-direction: column; gap: 12px; }
-      .shift-form input, .shift-form select { width: 100% !important; }
-
-      .controls { flex-direction: column; }
-      .controls button { width: 100%; }
-
-      input[type="date"], input[type="text"], input[type="number"], select { width: 100%; }
+    .auth-modal-content {
+      background: var(--surface);
+      border-top: 3px solid var(--accent);
+      padding: 28px 28px 20px;
+      width: 90%; max-width: 380px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
     }
+    .auth-modal-content h2 { font-size: 18px; font-weight: 600; margin-bottom: 2px; }
+    .auth-modal-content p { color: var(--muted); margin-bottom: 18px; font-size: 13px; }
+    .auth-modal-content label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 3px; }
+    .auth-modal-content input { width: 100%; height: 34px; margin-bottom: 12px; }
+    .auth-modal-content .btn { width: 100%; height: 34px; margin-bottom: 8px; }
+    .auth-error { color: var(--danger); background: #fdf1f0; border-left: 3px solid var(--danger); padding: 8px 10px; margin-bottom: 12px; font-size: 13px; }
+    .auth-loading { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
 
-    @media (max-width: 480px) {
-      body { padding: 8px; }
-      h1 { font-size: 1.2rem; }
-      section { padding: 8px; }
-      table tr { padding: 8px; margin-bottom: 8px; }
-      button { padding: 8px 12px; font-size: 0.85rem; }
+    @media (max-width: 1100px) {
+      .cols { grid-template-columns: 1fr; }
+      .titleblock { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .appbar { padding: 0 12px; gap: 10px; }
+      .appname, .status { display: none; }
+      main { padding: 16px; }
+      .params { flex-wrap: wrap; }
+      .entry { grid-template-columns: 1fr 1fr; }
+      .lot-line { grid-template-columns: 14px 56px minmax(0, 1fr) 24px; }
+      .gauge, .tag { display: none; }
+      .acts button { visibility: visible; }
     }
   </style>
 
   <!-- Supabase Client Library (pinned 2.38.0) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0"></script>
-  <style>
-    .auth-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 50000;
-      pointer-events: none;
-    }
-    .auth-modal-content {
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      max-width: 400px;
-      width: 90%;
-      text-align: center;
-      pointer-events: auto;
-    }
-    .auth-modal-content h2 {
-      margin: 0 0 10px 0;
-      color: #1a5490;
-      font-size: 1.5rem;
-      border: none;
-      padding: 0;
-    }
-    .auth-modal-content p {
-      color: #666;
-      margin-bottom: 24px;
-      font-size: 0.95rem;
-    }
-    .auth-modal-content input {
-      width: 100%;
-      margin-bottom: 12px;
-      font-size: 0.95rem;
-    }
-    .auth-modal-content button {
-      width: 100%;
-      margin-bottom: 8px;
-    }
-    .auth-modal-content .secondary {
-      background: #7f8c8d;
-    }
-    .auth-error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      font-size: 0.9rem;
-    }
-    .user-info {
-      text-align: right;
-      padding: 8px 16px;
-      background: #f0f8ff;
-      border-bottom: 1px solid #ddd;
-      font-size: 0.9rem;
-      color: #2c3e50;
-    }
-    .user-info span {
-      margin-right: 12px;
-    }
-  </style>
 </head>
 <body>
 
 <div id="authModal" class="auth-modal" style="display: none;">
   <div class="auth-modal-content">
-    <h2>Sign In</h2>
-    <p>PWL Asphalt Tracker</p>
+    <h2>Sign in</h2>
+    <p>PWL Asphalt Sampling Tracker</p>
     <div id="authError" class="auth-error" style="display: none;"></div>
-    <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
-    <button id="authSignInBtn">Sign In</button>
-    <button id="authForgotBtn" class="secondary" style="width: 100%; margin-top: 8px;">Forgot Password?</button>
-    <div id="authLoading" style="display: none; margin-top: 12px; color: #666;">Loading...</div>
+    <label for="authPassword">Password</label>
+    <input type="password" id="authPassword" autocomplete="current-password">
+    <button id="authSignInBtn" class="btn primary">Sign in</button>
+    <button id="authForgotBtn" class="btn">Forgot password?</button>
+    <div id="authLoading" class="auth-loading" style="display: none;">Loading…</div>
   </div>
 </div>
 
 <div id="recoveryModal" class="auth-modal" style="display: none;">
-  <div class="auth-modal-content" style="max-width: 500px;">
-    <h2>Reset Password</h2>
-    <p>Answer your security question to reset your password</p>
+  <div class="auth-modal-content">
+    <h2>Reset password</h2>
+    <p>Answer your security question to reset your password.</p>
     <div id="recoveryError" class="auth-error" style="display: none;"></div>
 
     <div id="recoveryQuestions" style="display: none;">
-      <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;" id="q1Label"></label>
-        <input type="text" id="q1Answer" placeholder="Your answer">
-      </div>
-      <button id="recoveryVerifyBtn">Verify Answer</button>
+      <label id="q1Label" for="q1Answer"></label>
+      <input type="text" id="q1Answer">
+      <button id="recoveryVerifyBtn" class="btn primary">Verify answer</button>
     </div>
 
     <div id="recoveryReset" style="display: none;">
-      <div style="margin-bottom: 16px;">
-        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #2c3e50;">New Password:</label>
-        <input type="password" id="recoveryNewPassword" placeholder="Enter new password">
-      </div>
-      <button id="recoveryResetBtn">Set New Password</button>
+      <label for="recoveryNewPassword">New password</label>
+      <input type="password" id="recoveryNewPassword">
+      <button id="recoveryResetBtn" class="btn primary">Set new password</button>
     </div>
 
-    <button id="recoveryBackBtn" class="secondary" style="width: 100%; margin-top: 12px;">Back to Sign In</button>
-    <div id="recoveryLoading" style="display: none; margin-top: 12px; color: #666;">Loading...</div>
+    <button id="recoveryBackBtn" class="btn">Back to sign in</button>
+    <div id="recoveryLoading" class="auth-loading" style="display: none;">Loading…</div>
   </div>
 </div>
 
-<div id="userBar" class="user-info" style="display: none;">
-  <span style="color: #27ae60; font-weight: 500;">✓ Authenticated</span>
-  <button id="signOutBtn" class="secondary" style="padding: 4px 12px; font-size: 0.85rem;">Sign Out</button>
-</div>
+<header class="appbar">
+  <div class="mark">PWL</div>
+  <div class="appname">Asphalt Sampling Tracker</div>
+  <div class="spacer"></div>
+  <div id="userBar" style="display: none;">
+    <div class="appbar-actions">
+      <div class="status" id="syncStatus"></div>
+      <div class="menu" id="dataMenu">
+        <button class="bar-btn" id="dataMenuBtn" type="button">Data ▾</button>
+        <div class="menu-list">
+          <div class="grp">Export</div>
+          <button id="exportCsvBtn" type="button">Export CSV</button>
+          <button id="exportJsonBtn" type="button">Export JSON</button>
+          <div class="grp">Import</div>
+          <button id="importCsvBtn" type="button">Import shifts (CSV)</button>
+          <button id="importJsonBtn" type="button">Import data (JSON)</button>
+          <hr>
+          <button id="backupNowBtn" type="button">Backup now (resets database)</button>
+          <button id="restoreBackupBtn" type="button">Restore from backup</button>
+          <hr>
+          <button id="settingsBtn" type="button">Settings</button>
+          <button id="selfTestBtn" type="button">Run self-test</button>
+          <button id="loadExampleBtn" type="button">Load example data</button>
+          <hr>
+          <button id="clearAllBtn" type="button" class="danger">Clear all data</button>
+        </div>
+      </div>
+      <button class="bar-btn" id="signOutBtn" type="button">Sign out</button>
+    </div>
+  </div>
+</header>
 
-
-<div class="container">
-  <h1>PWL Asphalt Sampling Tracker &amp; Shift Log</h1>
+<main>
   <div id="banner"></div>
 
-  <section>
-    <h2>Annual Summary</h2>
-    <table id="annualSummaryTable">
-      <thead>
-        <tr>
-          <th>Year</th>
-          <th id="annualMix1"></th>
-          <th id="annualMix2"></th>
-          <th id="annualMix3"></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <section class="titleblock">
+    <div>
+      <div class="crumb">Quality Control · HMA Acceptance</div>
+      <h1>Sampling Tracker &amp; Shift Log</h1>
+    </div>
+    <div class="params">
+      <div class="param"><div class="k">Lot size</div><div class="v" id="paramLot"></div></div>
+      <div class="param"><div class="k">Sublot</div><div class="v" id="paramSublot"></div></div>
+      <div class="param"><div class="k">Lot window</div><div class="v" id="paramWindow"></div></div>
+      <div class="param"><div class="k">Next lot</div><div class="v" id="paramNextLot"></div></div>
+    </div>
   </section>
 
-  <div class="summary-box" style="background: #f0f8ff;">
-    <div style="display: flex; gap: 16px; align-items: center;">
-      <label style="margin: 0;">
-        <strong>Starting Lot Number:</strong>
-        <input type="number" id="startLotNo" value="100" style="width: 80px; margin-left: 8px;">
-      </label>
-      <button id="updateStartLotBtn" class="secondary" style="padding: 6px 12px; font-size: 0.9rem;">Update</button>
-      <span id="lotInfo" style="font-size: 0.9rem; color: #666;"></span>
-    </div>
-  </div>
+  <section class="settings" id="settingsPanel">
+    <label>Starting lot number <input type="number" id="startLotNo" value="100" min="1"></label>
+    <button class="btn" id="updateStartLotBtn" type="button">Update</button>
+    <span id="lotInfo" class="meta"></span>
+    <div class="spacer"></div>
+    <button class="btn" id="settingsCloseBtn" type="button">Close</button>
+  </section>
 
-  <div class="wrap">
-    <section>
-      <h2>Sampling Tracker</h2>
-      <div class="controls">
-        <label><input type="checkbox" id="hideEmpty"> Hide empty sublots</label>
+  <section class="metrics" id="metrics"></section>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-hd">
+        <h2>Sampling Tracker</h2>
+        <span class="meta" id="samplingMeta"></span>
+        <div class="spacer"></div>
+        <button class="btn" id="newLotBtn" type="button">New lot</button>
+      </div>
+      <div class="filters">
         <select id="sortMode">
-          <option value="date">Sort by Date</option>
-          <option value="lot">Sort by Lot</option>
+          <option value="date">Sort by date</option>
+          <option value="lot">Sort by lot</option>
         </select>
-        <input type="text" id="filterLot" placeholder="Filter by Lot#" style="width: 100px;">
-        <input type="text" id="filterMix" placeholder="Filter by Mix" style="width: 120px;">
+        <input type="text" id="filterLot" placeholder="Lot #" style="width: 76px;">
+        <input type="text" id="filterMix" placeholder="Mix" style="width: 100px;">
+        <label class="chk"><input type="checkbox" id="hideEmpty"> Hide empty sublots</label>
       </div>
-      <table id="samplingTable">
-        <thead>
-          <tr>
-            <th>Lot</th>
-            <th>Sublot</th>
-            <th>Sample Ton</th>
-            <th>Mix</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <button class="secondary" id="newLotBtn">New Lot</button>
+      <div class="scroll">
+        <table id="samplingTable">
+          <thead>
+            <tr><th>Sublot</th><th class="num">Sample (t)</th><th>Date</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
 
-    <section>
-      <h2>Shift Log</h2>
-      <div class="shift-form">
-        <input type="date" id="shiftDate" placeholder="Date">
-        <input type="text" id="shiftMix" placeholder="Mix (e.g., PMA0.5)" list="mixList" style="width: 150px;">
-        <datalist id="mixList"></datalist>
-        <input type="text" id="shiftPlant" placeholder="Plant (e.g., Plant A)" list="plantList" style="width: 150px;">
-        <datalist id="plantList"></datalist>
-        <input type="number" id="shiftTons" placeholder="Tons" step="0.01" min="0" style="width: 100px;">
-        <input type="text" id="shiftLocations" placeholder="Locations (e.g., North, South)" style="width: 200px;">
-        <label><input type="checkbox" id="shiftBridge"> Bridge deck</label>
-        <button id="addShiftBtn">Add Shift</button>
+    <section class="panel">
+      <div class="panel-hd">
+        <h2>Shift Log</h2>
+        <span class="meta" id="shiftMeta"></span>
       </div>
-      <table id="shiftTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Mix</th>
-            <th>Plant</th>
-            <th>Shift Tons</th>
-            <th>Total Lot Tons</th>
-            <th>Locations</th>
-            <th>Bridge</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="entry">
+        <div class="field"><label for="shiftDate">Date</label><input type="date" id="shiftDate"></div>
+        <div class="field"><label for="shiftMix">Mix</label><input type="text" id="shiftMix" placeholder="PMA 0.5" list="mixList"><datalist id="mixList"></datalist></div>
+        <div class="field"><label for="shiftPlant">Plant</label><input type="text" id="shiftPlant" placeholder="Plant" list="plantList"><datalist id="plantList"></datalist></div>
+        <div class="field"><label for="shiftTons">Tons</label><input type="number" id="shiftTons" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="field wide"><label for="shiftLocations">Locations</label><input type="text" id="shiftLocations" placeholder="e.g., Rte 8 NB, Sta 120+00 – 145+00"></div>
+        <div class="entry-actions">
+          <label class="chk"><input type="checkbox" id="shiftBridge"> Bridge deck (excluded)</label>
+          <button class="btn primary" id="addShiftBtn" type="button">Add shift</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table id="shiftTable">
+          <thead>
+            <tr><th>Date</th><th>Mix</th><th>Plant</th><th class="num">Tons</th><th>Lot</th><th class="num">Lot total</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
-  <div class="controls">
-    <button id="exportCsvBtn" class="secondary">Export CSV</button>
-    <button id="importCsvBtn" class="secondary">Import CSV (Shifts)</button>
-    <button id="exportJsonBtn" class="secondary">Export JSON</button>
-    <button id="backupNowBtn" class="primary">💾 Backup Now (3-month cycle)</button>
-    <button id="restoreBackupBtn" class="primary">📂 Restore from Backup</button>
-    <button id="importJsonBtn" class="secondary">Import JSON</button>
-    <button id="selfTestBtn" class="secondary">Self-Test</button>
-    <button id="loadExampleBtn" class="secondary">Load Example Data</button>
-    <button id="clearAllBtn" class="danger">Clear All</button>
-  </div>
-
-  <section style="margin-top: 20px;">
-    <h2>📖 README & Documentation</h2>
-    <div style="background: #f5f5f5; padding: 20px; border-radius: 6px; line-height: 1.8;">
-      <h3 style="margin-top: 0; color: #1a5490;">PWL Asphalt Sampling Tracker</h3>
-      <p>A modern web application for managing asphalt lot inventory and sample tracking with <strong>real-time Supabase persistence</strong>.</p>
-
-      <h4>Key Features</h4>
-      <ul style="margin: 10px 0;">
-        <li><strong>Lot Management</strong> — Create and track asphalt mix lots with expiration dates</li>
-        <li><strong>Sampling Tracker</strong> — Record shifts and allocate tonnage across lots using a rolling 30-day window</li>
-        <li><strong>Sample Generation</strong> — Automatically generate sample records for each lot</li>
-        <li><strong>Cloud Sync</strong> — Real-time data persistence to Supabase</li>
-        <li><strong>Offline Mode</strong> — Works offline with localStorage fallback</li>
-      </ul>
-
-      <h4>Quick Start</h4>
-      <ul style="margin: 10px 0;">
-        <li><strong>Add a Shift</strong>: Enter date, mix, plant, tons, and click "Add Shift"</li>
-        <li><strong>Generate Samples</strong>: Click "Generate Samples" to create 7 samples per lot</li>
-        <li><strong>Export Data</strong>: Use "Export CSV" or "Export JSON" for data portability</li>
-        <li><strong>Backup & Restore</strong>: Use "Backup Now" and "Restore from Backup"</li>
-      </ul>
-
-      <p style="margin-top: 15px;">Full documentation: <a href="https://github.com/tttpppn/asphalt-tracker" target="_blank" style="color: #3498db; text-decoration: none; font-weight: 600;">View on GitHub</a></p>
+  <section class="panel annual">
+    <div class="panel-hd"><h2>Annual Summary</h2><span class="meta">Bridge deck tonnage excluded</span></div>
+    <div class="scroll">
+      <table id="annualSummaryTable">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </section>
 
   <div id="testResults"></div>
 
-  <div class="footer">
-    <div style="margin-bottom: 12px; border-bottom: 1px solid #ccc; padding-bottom: 12px;">
-      © 2026 PWL Asphalt Tracker - Developed by Tai Nguyen
-    </div>
-    <div style="display: flex; gap: 20px; align-items: center; margin-top: 12px;">
-      <div style="font-style: italic; color: #666; font-size: 1.8rem; flex: 1;">
-        "Knowing what you don't know is more useful than being brilliant"<br>
-        <strong>— Charlie Munger —</strong>
-      </div>
-      <div style="flex: 0 0 auto;">
-        <img src="munger.png" alt="Charlie Munger" style="width: 150px; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-      </div>
-    </div>
-  </div>
-</div>
+  <figure class="quote">
+    <img src="munger.png" alt="Charlie Munger">
+    <blockquote>
+      <p>“Knowing what you don't know is more useful than being brilliant.”</p>
+      <figcaption>— Charlie Munger</figcaption>
+    </blockquote>
+  </figure>
+
+  <footer>
+    <span>PWL Asphalt Sampling Tracker</span>
+    <span>© 2026 Tai Nguyen</span>
+  </footer>
+</main>
 
 <script>
 // ============================================================================
@@ -650,6 +566,15 @@ function escapeCSV(val) {
   return str;
 }
 
+function escapeHTML(val) {
+  return String(val ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Safe for use inside an inline onclick="fn(...)" attribute
+function jsArg(val) {
+  return escapeHTML(JSON.stringify(val));
+}
+
 // ============================================================================
 // LOT GEOMETRY
 // ============================================================================
@@ -657,33 +582,6 @@ function lotRangeCt(lot) {
   const start = lot.index * LOT_TONS;
   const end = (lot.index + 1) * LOT_TONS;
   return { start: toCt(start), end: toCt(end) };
-}
-
-function sublotRangeCt(lot, n) {
-  const lotStart = lot.index * LOT_TONS;
-  const subStart = lotStart + (n - 1) * SUBLOT_TONS;
-  const subEnd = lotStart + n * SUBLOT_TONS;
-  return { start: toCt(subStart), end: toCt(subEnd) };
-}
-
-function getLotTonnageFromLedger(lot, ledger) {
-  const range = lotRangeCt(lot);
-  const entries = ledger.filter(e => {
-    if (e.excluded || e.afterCt <= range.start) return false;
-
-    // Skip shifts after lot's expiration date
-    if (lot.expirationDate) {
-      const shiftDate = parseLocalDate(e.shift.date);
-      const expirationD = parseLocalDate(lot.expirationDate);
-      if (shiftDate > expirationD) return false;
-    }
-
-    return true;
-  });
-
-  if (entries.length === 0) return 0;
-  const lastEntry = entries[entries.length - 1];
-  return Math.min(lastEntry.afterCt, range.end) - range.start;
 }
 
 function getLotTonnageFromShifts(lot, state, today = new Date()) {
@@ -907,14 +805,7 @@ function reconcileLots(state, ledgers, today = new Date()) {
 // ============================================================================
 function splitShiftAcrossLots(beforeCt, afterCt, lotsForMixPlant, shiftDate = null, today = new Date()) {
   const shiftTons = (afterCt - beforeCt) / 100;
-  console.log(`\n=== splitShiftAcrossLots (ROLLING 30-DAY WINDOW) ===`);
-  console.log(`shiftDate: ${shiftDate}, shift tonnage: ${shiftTons}t`);
-  console.log(`lotsForMixPlant count: ${lotsForMixPlant.length}`);
-
-  if (lotsForMixPlant.length === 0) {
-    console.log(`ERROR: No lots available!`);
-    return [];
-  }
+  if (lotsForMixPlant.length === 0) return [];
 
   const shiftD = parseLocalDate(shiftDate);
 
@@ -942,105 +833,30 @@ function splitShiftAcrossLots(beforeCt, afterCt, lotsForMixPlant, shiftDate = nu
     const currentTonnage = (lotTonnage[lot.lotNo] || 0) / 100;
     const availableCapacity = LOT_TONS - currentTonnage;
 
-    console.log(`\n  Lot ${lot.lotNo}:`);
-    console.log(`    Current tonnage: ${currentTonnage}t, Available capacity: ${availableCapacity}t`);
-    console.log(`    Created: ${lot.createdDate}, Window: ${lot.windowStartDate || 'N/A'}, Expires: ${lot.expirationDate}`);
-
     // Check if lot is within active 30-day window
     // windowStartDate = date the 30-day window began (rolling window)
     // expirationDate = windowStartDate + 30 days (end of active window)
     const windowStart = lot.windowStartDate ? parseLocalDate(lot.windowStartDate) : parseLocalDate(lot.createdDate);
     const windowEnd = lot.expirationDate ? parseLocalDate(lot.expirationDate) : parseLocalDate(addDays(lot.createdDate, WINDOW_DAYS));
 
-    if (shiftD < windowStart || shiftD > windowEnd) {
-      console.log(`    SKIP: OUTSIDE 30-DAY WINDOW [${fmtLocalDate(windowStart)} to ${fmtLocalDate(windowEnd)}]`);
-      continue;
-    }
+    if (shiftD < windowStart || shiftD > windowEnd) continue;
+    if (availableCapacity <= 0) continue;
 
-    if (availableCapacity <= 0) {
-      console.log(`    SKIP: FULL (${currentTonnage}t)`);
-      continue;
-    }
-
-    // Allocate what we can to this lot
     const allocation = Math.min(remaining, availableCapacity);
-    console.log(`    ✓ Allocating ${allocation}t to Lot ${lot.lotNo}`);
     result.push({ lotNo: lot.lotNo, ct: toCt(allocation) });
     remaining -= allocation;
   }
 
-  if (remaining > 0) {
-    console.log(`\n⚠ WARNING: ${remaining}t unallocated (no lots in active window with capacity)`);
-  }
-
-  console.log(`\nFinal result: ${result.length} lots, splits:`, result.map(r => `Lot${r.lotNo}:${r.ct/100}t`).join(', '));
   return result;
 }
 
 // ============================================================================
-// SAMPLE DUE DATE
+// SAMPLE STATUS
 // ============================================================================
-function findSampleDate(ledger, sampleCt, lot) {
-  for (const entry of ledger) {
-    if (entry.excluded) continue;
-
-    // Skip shifts that come after the lot's expiration date
-    if (lot && lot.createdDate) {
-      const expirationDate = lot.expirationDate || addDays(lot.createdDate, WINDOW_DAYS);
-      const shiftDate = parseLocalDate(entry.shift.date);
-      const expirationD = parseLocalDate(expirationDate);
-      if (shiftDate > expirationD) {
-        continue; // Skip this shift, lot has expired
-      }
-    }
-
-    if (entry.afterCt >= sampleCt) {
-      return entry.shift.date;
-    }
-  }
-
-  // If not found in ledger (e.g., RENEWAL allocations), find from shifts directly
-  if (lot) {
-    const lotsForMix = state.lots.filter(l => l.mixKey === lot.mixKey && normPlant(l.plant || '') === normPlant(lot.plant || ''));
-    const sortedShifts = sortShifts(state.shifts);
-    let cumulativeCt = 0;
-
-    for (const shift of sortedShifts) {
-      if (normMix(shift.mix) !== lot.mixKey || shift.bridge) continue;
-
-      const splits = splitShiftAcrossLots(cumulativeCt, cumulativeCt + toCt(shift.tonsCt), lotsForMix, shift.date);
-      const allocation = splits.find(s => s.lotNo === lot.lotNo);
-
-      if (allocation && cumulativeCt + allocation.ct >= sampleCt) {
-        return shift.date;
-      }
-
-      cumulativeCt += toCt(shift.tonsCt);
-    }
-  }
-
-  return null;
-}
-
 function sampleStatus(totalCt, sampleCt, taken) {
   if (taken) return 'Taken';
   if (totalCt >= sampleCt) return 'Due';
   return 'Pending';
-}
-
-// ============================================================================
-// 30-DAY WINDOW
-// ============================================================================
-function lotWindow(lot, ledger, today) {
-  if (!lot.createdDate) return null;
-
-  const d1 = parseLocalDate(lot.createdDate);
-  const dayN = daysBetween(d1, today) + 1;
-  let level = 'ok';
-  if (dayN >= WINDOW_DAYS + 1) level = 'over';
-  else if (dayN >= 25) level = 'warn';
-
-  return { firstDate: lot.createdDate, dayN, level };
 }
 
 // ============================================================================
@@ -1197,17 +1013,21 @@ function derive(state, today = new Date(), skipReconcile = false) {
     }
   });
 
+  // Per-lot running tonnage from the actual shift allocations, so sample dates
+  // and status match the Shift Log (including lots opened by the 30-day rule)
+  const lotTimelines = {};
+  sortedShifts.forEach(shift => {
+    shiftAllocations[shift.id].splits.forEach(split => {
+      const timeline = lotTimelines[split.lotNo] || (lotTimelines[split.lotNo] = []);
+      const before = timeline.length ? timeline[timeline.length - 1].afterCt : 0;
+      timeline.push({ date: shift.date, afterCt: before + split.ct });
+    });
+  });
+
   const sampleRows = [];
   state.lots.forEach(lot => {
-    const key = normMix(lot.mix) + '|' + normPlant(lot.plant || '');
-    const ledger = ledgers[key] || [];
-    const lotRange = lotRangeCt(lot);
-    const lotTonnage = getLotTonnageFromLedger(lot, ledger);
-    const lotLedger = ledger.filter(e => !e.excluded && e.afterCt > lotRange.start).map(e => ({
-      ...e,
-      beforeCt: Math.max(e.beforeCt - lotRange.start, 0),
-      afterCt: Math.min(e.afterCt - lotRange.start, toCt(LOT_TONS))
-    }));
+    const timeline = lotTimelines[lot.lotNo] || [];
+    const lotTonnage = timeline.length ? timeline[timeline.length - 1].afterCt : 0;
 
     lot.samples.forEach((sample, idx) => {
       const n = idx + 1;
@@ -1215,20 +1035,16 @@ function derive(state, today = new Date(), skipReconcile = false) {
       // Only show samples that were actually generated
       if (sample.tonCt === null) return;
 
-      const range = sublotRangeCt(lot, n);
-      const sampleDate = findSampleDate(lotLedger, sample.tonCt, lot);
-      const status = sampleStatus(lotTonnage, sample.tonCt, sample.taken);
-      const windowInfo = lotWindow(lot, ledger, today);
+      const hit = timeline.find(e => e.afterCt >= sample.tonCt);
 
       sampleRows.push({
         lot,
         sublot: n,
         sample,
-        sampleDate,
-        status,
+        sampleDate: hit ? hit.date : null,
+        status: sampleStatus(lotTonnage, sample.tonCt, sample.taken),
         mixTotal: lotTonnage,
-        range,
-        windowInfo
+        range: { start: toCt((n - 1) * SUBLOT_TONS), end: toCt(n * SUBLOT_TONS) }
       });
     });
   });
@@ -1776,15 +1592,42 @@ async function addShift(date, mix, plant, tons, locations, bridge) {
   await commit();
 }
 
+// Lots that had tonnage before a shift edit/delete and have none after are
+// removed, so their lot numbers are freed instead of piling up as empty lots.
+async function pruneEmptiedLots(tonnageBefore) {
+  derive(state);
+  const emptied = state.lots.filter(l => (tonnageBefore.get(l.lotNo) || 0) > 0 && !l.currentTonnage);
+  if (emptied.length === 0) return;
+
+  const emptiedNos = new Set(emptied.map(l => l.lotNo));
+  state.lots = state.lots.filter(l => !emptiedNos.has(l.lotNo));
+  state.nextLotNo = undefined;
+
+  if (BACKEND === 'supabase' && supabase && !isReadOnly) {
+    for (const lotNo of emptiedNos) {
+      const { error: sErr } = await supabase.from('samples').delete().eq('lot_no', lotNo);
+      const { error: lErr } = sErr ? { error: null } : await supabase.from('lots').delete().eq('lot_no', lotNo);
+      if (sErr || lErr) showBanner(`Could not remove empty Lot ${lotNo} in cloud: ${(sErr || lErr).message}`, 'error');
+    }
+  }
+  showBanner(`Removed empty lot${emptied.length === 1 ? '' : 's'} ${[...emptiedNos].join(', ')}`, 'info');
+}
+
+function lotTonnageSnapshot() {
+  return new Map(state.lots.map(l => [l.lotNo, l.currentTonnage || 0]));
+}
+
 async function editShift(id, date, mix, plant, tons, locations, bridge) {
   const shift = state.shifts.find(s => s.id === id);
   if (shift) {
+    const before = lotTonnageSnapshot();
     shift.date = date;
     shift.mix = mix.trim();
     shift.plant = plant.trim();
     shift.tonsCt = parseFloat(tons);
     shift.locations = (locations || '').trim();
     shift.bridge = !!bridge;
+    await pruneEmptiedLots(before);
     await commit();
   }
 }
@@ -1796,11 +1639,18 @@ async function deleteShift(id) {
     console.log(`✓ Deleting shift: date=${shift.date}, mix=${shift.mix}, plant=${shift.plant}, tons=${shift.tonsCt}`);
   }
   const initialCount = state.shifts.length;
+  const before = lotTonnageSnapshot();
   state.shifts = state.shifts.filter(s => s.id !== id);
   const deleted = initialCount > state.shifts.length;
 
   if (deleted) {
     console.log(`✓ deleteShift: Shift ${id} deleted successfully. Remaining shifts: ${state.shifts.length}`);
+    // Upserts never remove rows, so delete explicitly or the shift reappears on reload
+    if (BACKEND === 'supabase' && supabase && !isReadOnly) {
+      const { error } = await supabase.from('shifts').delete().eq('id', id);
+      if (error) showBanner(`Delete failed in cloud: ${error.message}`, 'error');
+    }
+    await pruneEmptiedLots(before);
     await commit();
   } else {
     console.log(`✗ deleteShift: Shift ${id} not found`);
@@ -1880,6 +1730,13 @@ async function deleteLot(lotNo) {
     // Always reset nextLotNo when deleting a lot to enable proper gap-filling on next lot creation
     state.nextLotNo = undefined;
 
+    if (BACKEND === 'supabase' && supabase && !isReadOnly) {
+      const { error: sErr } = await supabase.from('samples').delete().eq('lot_no', lotNo);
+      const { error: lErr } = sErr ? { error: null } : await supabase.from('lots').delete().eq('lot_no', lotNo);
+      const err = sErr || lErr;
+      if (err) showBanner(`Delete failed in cloud: ${err.message}`, 'error');
+    }
+
     console.log(`✓ deleteLot: Deleted Lot ${lotNo}, existing lots now: ${state.lots.map(l => l.lotNo).sort((a,b) => a-b).join(', ')}`);
 
     await commit();
@@ -1922,17 +1779,74 @@ function render() {
   const today = new Date();
   const derived = derive(state, today);
 
-  renderSummary(derived);
+  renderMetrics(derived);
   renderSamplingTable(derived);
   renderShiftTable(derived);
   renderAnnualSummary(derived);
+  renderSyncStatus();
   updateMixList();
   updatePlantList();
   updateLotInfo();
 }
 
-function renderSummary(derived) {
-  // Individual lot summary removed - Annual Summary now at top
+function fmtNum(ct) {
+  return (ct / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderSyncStatus() {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const online = BACKEND === 'supabase' && supabase && !isReadOnly;
+  el.innerHTML = online ? '<i></i>Cloud sync on' : '<i class="off"></i>Offline · read-only';
+}
+
+function renderMetrics(derived) {
+  const el = document.getElementById('metrics');
+  if (!el) return;
+  const tile = (k, v, s) => `<div class="metric"><div class="k">${escapeHTML(k)}</div><div class="v">${v}</div><div class="s">${escapeHTML(s)}</div></div>`;
+
+  const years = state.shifts.map(s => s.date.slice(0, 4)).sort();
+  const year = years.length ? years[years.length - 1] : String(new Date().getFullYear());
+
+  const byMix = {};
+  state.shifts.forEach(s => {
+    if (s.bridge || !s.date.startsWith(year)) return;
+    const key = normMix(s.mix);
+    const m = byMix[key] || (byMix[key] = { name: s.mix, key, ct: 0, plants: new Set() });
+    m.ct += toCt(s.tonsCt);
+    if (s.plant) m.plants.add(s.plant);
+  });
+
+  const tiles = Object.values(byMix).sort((a, b) => a.key.localeCompare(b.key)).map(m => {
+    const lotCount = state.lots.filter(l => l.mixKey === m.key).length;
+    return tile(`${m.name} · ${year}`, `${fmtNum(m.ct)}<small>t</small>`,
+      `${[...m.plants].join(', ') || '—'} · ${lotCount} lot${lotCount === 1 ? '' : 's'}`);
+  });
+
+  const lotNos = state.lots.map(l => l.lotNo).sort((a, b) => a - b);
+  tiles.push(tile('Lots', lotNos.length, lotNos.length ? `${lotNos[0]} – ${lotNos[lotNos.length - 1]}` : 'none yet'));
+  const sampledLots = new Set(derived.sampleRows.map(r => r.lot.lotNo)).size;
+  tiles.push(tile('Samples', derived.sampleRows.length, `across ${sampledLots} lot${sampledLots === 1 ? '' : 's'}`));
+
+  el.innerHTML = tiles.join('');
+}
+
+const collapsedLots = new Set();
+
+function lotWindowRange(lot) {
+  const start = lot.windowStartDate || lot.createdDate;
+  const end = lot.expirationDate || (start ? addDays(start, WINDOW_DAYS) : null);
+  return { start, end };
+}
+
+function lotStateTag(lot, tonnageCt, today) {
+  if (!tonnageCt) return { cls: 'closed', text: 'Empty' };
+  if (tonnageCt >= toCt(LOT_TONS)) return { cls: 'complete', text: 'Complete' };
+  const { end } = lotWindowRange(lot);
+  if (!end) return { cls: 'open', text: 'Open' };
+  const daysLeft = daysBetween(today, parseLocalDate(end));
+  if (daysLeft < 0) return { cls: 'closed', text: 'Closed' };
+  return { cls: 'open', text: `${daysLeft} d left` };
 }
 
 function renderSamplingTable(derived) {
@@ -1958,95 +1872,120 @@ function renderSamplingTable(derived) {
     rows = rows.filter(r => r.lot.mixKey.includes(filterMix));
   }
 
-  // Sort
-  if (sortMode === 'lot') {
-    rows.sort((a, b) => a.lot.lotNo !== b.lot.lotNo ? a.lot.lotNo - b.lot.lotNo : a.sublot - b.sublot);
-  } else {
-    rows.sort((a, b) => {
-      if ((a.sampleDate === null) !== (b.sampleDate === null)) return a.sampleDate === null ? 1 : -1;
-      if (a.sampleDate !== b.sampleDate) return a.sampleDate > b.sampleDate ? 1 : -1;
-      if (a.lot.lotNo !== b.lot.lotNo) return a.lot.lotNo - b.lot.lotNo;
-      return a.sublot - b.sublot;
+  // Group by lot so each lot gets exactly one heading
+  const groups = new Map();
+  rows.forEach(r => {
+    if (!groups.has(r.lot.lotNo)) groups.set(r.lot.lotNo, { lot: r.lot, tonnage: r.mixTotal, rows: [] });
+    groups.get(r.lot.lotNo).rows.push(r);
+  });
+  // Lots with no tonnage have no sample rows; still list them so they can be deleted
+  if (!hideEmpty) {
+    state.lots.forEach(lot => {
+      if (groups.has(lot.lotNo)) return;
+      if (filterLot && lot.lotNo !== parseInt(filterLot)) return;
+      if (filterMix && !(lot.mixKey || '').includes(filterMix)) return;
+      groups.set(lot.lotNo, { lot, tonnage: lot.currentTonnage || 0, rows: [] });
     });
   }
-
-  tbody.innerHTML = '';
-  let currentLot = null;
-
-  rows.forEach(row => {
-    if (row.lot.lotNo !== currentLot) {
-      currentLot = row.lot.lotNo;
-      const lot = row.lot;
-
-      let headerHtml = `<tr class="lot-header">
-        <td colspan="8">
-          <strong>Lot ${lot.lotNo} (${lot.mix}, ${lot.plant || '—'}, index ${lot.index})</strong>
-          <button class="secondary" style="margin-left: 16px; padding: 4px 8px; font-size: 0.8rem;" onclick="generateSamples(${lot.lotNo})">
-            Generate samples
-          </button>`;
-
-      headerHtml += `<button class="danger" style="padding: 4px 8px; font-size: 0.8rem; margin-left: 8px;" onclick="deleteLot(${lot.lotNo})">Delete Lot</button>`;
-
-      headerHtml += '</td></tr>';
-      tbody.innerHTML += headerHtml;
+  const firstDate = g => g.rows.reduce((min, r) => (r.sampleDate && (!min || r.sampleDate < min) ? r.sampleDate : min), null);
+  const ordered = [...groups.values()].sort((a, b) => {
+    if (sortMode !== 'lot') {
+      const da = firstDate(a), db = firstDate(b);
+      if ((da === null) !== (db === null)) return da === null ? 1 : -1;
+      if (da !== db) return da < db ? -1 : 1;
     }
-
-    const sample = row.sample;
-    const statusClass = 'status-' + row.status.split(' ')[0].toLowerCase();
-    const range = row.range;
-    const warning = sample.tonCt !== null && !isSampleInRange(row.lot, row.sublot, sample.tonCt)
-      ? `<div class="warning">⚠ Outside range [${fmtTons(range.start)}, ${fmtTons(range.end)}]</div>`
-      : '';
-
-    const takenDisabled = !row.status.includes('Due') && !sample.taken ? 'disabled' : '';
-
-    let sampleInput = 'Not generated';
-    if (sample.tonCt !== null) {
-      sampleInput = `<input type="number" value="${sample.tonCt / 100}" step="1" min="0" style="width: 120px;" onchange="editSample(${row.lot.lotNo}, ${row.sublot}, Math.round(this.value * 100))">`;
-    }
-
-    tbody.innerHTML += `<tr class="${statusClass}">
-      <td>${row.lot.lotNo}</td>
-      <td>${row.sublot}</td>
-      <td>${sampleInput}${warning}</td>
-      <td>${row.lot.mix}</td>
-      <td>${row.sampleDate || '—'}</td>
-    </tr>`;
+    return a.lot.lotNo - b.lot.lotNo;
   });
+
+  const today = new Date();
+  let html = '';
+  ordered.forEach(g => {
+    const lot = g.lot;
+    const lotNo = Number(lot.lotNo);
+    const tag = lotStateTag(lot, g.tonnage, today);
+    const { start, end } = lotWindowRange(lot);
+    const windowTip = start && end ? `30-day window: ${start} to ${end}` : 'No window dates';
+    const desc = `${lot.mix} · ${lot.plant || '—'}`;
+    const pct = Math.min(100, g.tonnage / toCt(LOT_TONS) * 100);
+    const collapsed = collapsedLots.has(lotNo);
+
+    html += `<tr class="lot${collapsed ? ' collapsed' : ''}" data-lot="${lotNo}">
+      <td colspan="3" title="${escapeHTML(windowTip)}">
+        <div class="lot-line">
+          <span class="caret">▼</span>
+          <span class="lot-id">LOT ${lotNo}</span>
+          <span class="lot-desc">${escapeHTML(desc)}</span>
+          <span class="gauge" title="${fmtNum(g.tonnage)} of ${fmtNum(toCt(LOT_TONS))} t"><span class="track"><span class="fill" style="width:${pct}%"></span></span><span class="amt">${Math.round(g.tonnage / 100).toLocaleString('en-US')} t</span></span>
+          <span class="tag ${tag.cls}">${tag.text}</span>
+          <div class="lot-menu">
+            <button class="more" type="button" title="Lot actions">⋯</button>
+            <div class="lot-menu-list">
+              <button type="button" onclick="generateSamples(${lotNo})">Generate samples</button>
+              <hr>
+              <button type="button" class="danger" onclick="deleteLot(${lotNo})">Delete lot</button>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+
+    g.rows.sort((a, b) => a.sublot - b.sublot).forEach(row => {
+      const sample = row.sample;
+      const warning = !isSampleInRange(row.lot, row.sublot, sample.tonCt)
+        ? `<div class="warning">Outside sublot range ${fmtNum(row.range.start)} – ${fmtNum(row.range.end)} t</div>`
+        : '';
+      html += `<tr class="row" data-parent="${lotNo}"${collapsed ? ' style="display:none"' : ''}>
+        <td>Sublot ${row.sublot}</td>
+        <td class="num"><input type="number" class="sample-input" value="${sample.tonCt / 100}" step="1" min="0" onchange="editSample(${lotNo}, ${row.sublot}, Math.round(this.value * 100))">${warning}</td>
+        <td>${escapeHTML(row.sampleDate || '—')}</td>
+      </tr>`;
+    });
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="3" class="muted">No samples yet. Add a shift to create lots.</td></tr>';
+  const meta = document.getElementById('samplingMeta');
+  if (meta) meta.textContent = `${ordered.length} lot${ordered.length === 1 ? '' : 's'} · ${rows.length} sample${rows.length === 1 ? '' : 's'}`;
 }
 
 function renderShiftTable(derived) {
   const tbody = document.querySelector('#shiftTable tbody');
-  tbody.innerHTML = '';
+  let html = '';
 
-  derived.shiftRows.forEach((row, idx) => {
+  derived.shiftRows.forEach(row => {
     const shift = row.shift;
-    const total = fmtTons(row.mixPlantTotal);
-    const bridge = shift.bridge ? 'Yes (excluded)' : '—';
-    const splitAmount = fmtTons(row.splitAmount);
-    const displayAmount = row.splitLotNo ? splitAmount : shift.tonsCt;
-    const lotInfo = row.splitLotNo ? ` (→ Lot ${row.splitLotNo})` : '';
-
-    let splitNote = '';
-    if (row.splits.length > 1 && row.splitLotNo === row.splits[0].lotNo) {
-      const otherSplits = row.splits.slice(1).map(s => `${fmtTons(s.ct)} to lot ${s.lotNo}`).join(', ');
-      splitNote = `<div class="split-note">Also split: ${otherSplits}</div>`;
+    const amountCt = row.splitLotNo ? row.splitAmount : toCt(shift.tonsCt);
+    let lotCell = '<span class="muted">—</span>';
+    let totalCell = '<span class="muted">—</span>';
+    if (shift.bridge) {
+      lotCell = '<span class="muted">Bridge · excl.</span>';
+    } else if (row.splitLotNo) {
+      lotCell = `<span class="lotref">${Number(row.splitLotNo)}</span>`;
+      totalCell = fmtNum(row.mixPlantTotal);
     }
+    const locations = shift.locations ? `<div class="sub">${escapeHTML(shift.locations)}</div>` : '';
 
-    tbody.innerHTML += `<tr>
-      <td>${shift.date}</td>
-      <td>${shift.mix}</td>
-      <td>${shift.plant || '—'}</td>
-      <td>${displayAmount}${lotInfo}</td>
-      <td>${total}</td>
-      <td>${shift.locations || '—'}</td>
-      <td>${bridge}</td>
-      <td>
-        <button class="secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="editShiftUI('${shift.id}')">Edit</button>
-        <button class="danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="if (confirm('Delete this shift?')) deleteShift('${shift.id}')">Delete</button>
+    html += `<tr class="row">
+      <td>${escapeHTML(shift.date)}</td>
+      <td>${escapeHTML(shift.mix)}</td>
+      <td>${escapeHTML(shift.plant || '—')}${locations}</td>
+      <td class="num">${fmtNum(amountCt)}</td>
+      <td>${lotCell}</td>
+      <td class="num">${totalCell}</td>
+      <td class="acts">
+        <button type="button" onclick="editShiftUI(${jsArg(shift.id)})">Edit</button>
+        <button type="button" class="del" onclick="if (confirm('Delete this shift?')) deleteShift(${jsArg(shift.id)})">Delete</button>
       </td>
-    </tr>${splitNote ? '<tr><td colspan="8">' + splitNote + '</td></tr>' : ''}`;
+    </tr>`;
+
+    if (row.splits.length > 1 && row.splitLotNo === row.splits[0].lotNo) {
+      const others = row.splits.slice(1).map(s => `${fmtNum(s.ct)} t to Lot ${Number(s.lotNo)}`).join(', ');
+      html += `<tr class="split"><td></td><td colspan="6">↳ Split: ${others}</td></tr>`;
+    }
   });
+
+  tbody.innerHTML = html || '<tr><td colspan="7" class="muted">No shifts yet.</td></tr>';
+  const meta = document.getElementById('shiftMeta');
+  if (meta) meta.textContent = `${state.shifts.length} shift${state.shifts.length === 1 ? '' : 's'}`;
 }
 
 function renderAnnualSummary(derived) {
@@ -2074,37 +2013,37 @@ function renderAnnualSummary(derived) {
     if (!s.bridge) mixNames[normMix(s.mix)] = s.mix;
   });
 
-  // Update header with mix names
   let headerHtml = '<tr><th>Year</th>';
   allMixes.forEach(mix => {
-    headerHtml += `<th>${mixNames[mix] || mix}</th>`;
+    headerHtml += `<th class="num">${escapeHTML(mixNames[mix] || mix)} (t)</th>`;
   });
-  headerHtml += '</tr>';
+  headerHtml += '<th class="num">Total (t)</th></tr>';
   thead.innerHTML = headerHtml;
 
-  // Render data rows for each year
-  tbody.innerHTML = '';
+  let html = '';
   Object.keys(totals).sort().forEach(year => {
-    let row = `<tr><td><strong>${year}</strong></td>`;
+    let yearCt = 0;
+    html += `<tr class="row"><td>${escapeHTML(year)}</td>`;
     allMixes.forEach(mix => {
-      const tons = totals[year][mix] || 0;
-      row += `<td>${fmtTons(toCt(tons))}</td>`;
+      const ct = toCt(totals[year][mix] || 0);
+      yearCt += ct;
+      html += `<td class="num">${fmtNum(ct)}</td>`;
     });
-    row += '</tr>';
-    tbody.innerHTML += row;
+    html += `<td class="num"><strong>${fmtNum(yearCt)}</strong></td></tr>`;
   });
+  tbody.innerHTML = html || `<tr><td colspan="${allMixes.length + 2}" class="muted">No tonnage recorded yet.</td></tr>`;
 }
 
 function updateMixList() {
   const mixes = [...new Set(state.shifts.map(s => s.mix))];
   const list = document.getElementById('mixList');
-  list.innerHTML = mixes.map(m => `<option value="${m}">`).join('');
+  list.innerHTML = mixes.map(m => `<option value="${escapeHTML(m)}">`).join('');
 }
 
 function updatePlantList() {
   const plants = [...new Set(state.shifts.map(s => s.plant).filter(p => p))];
   const list = document.getElementById('plantList');
-  list.innerHTML = plants.map(p => `<option value="${p}">`).join('');
+  list.innerHTML = plants.map(p => `<option value="${escapeHTML(p)}">`).join('');
 }
 
 let editingShiftId = null;
@@ -2165,7 +2104,7 @@ function exportCSV() {
   csv += 'SHIFT LOG\n';
   csv += 'Date,Mix,Plant,Shift Tons,Total Lot Tons,Bridge\n';
   derived.shiftRows.forEach(row => {
-    csv += `${row.shift.date},${escapeCSV(row.shift.mix)},${escapeCSV(row.shift.plant || '')},${fmtTons(row.shift.tonsCt)},${fmtTons(row.mixPlantTotal)},${row.shift.bridge ? 'Yes' : ''}\n`;
+    csv += `${row.shift.date},${escapeCSV(row.shift.mix)},${escapeCSV(row.shift.plant || '')},${fmtTons(toCt(row.shift.tonsCt))},${fmtTons(row.mixPlantTotal)},${row.shift.bridge ? 'Yes' : ''}\n`;
   });
 
   // Blank line separator
@@ -2192,8 +2131,7 @@ function exportCSV() {
   Object.keys(totals).sort().forEach(year => {
     csv += year;
     allMixes.forEach(mix => {
-      const tonsCt = totals[year][mix] || 0;
-      csv += ',' + fmtTons(tonsCt);
+      csv += ',' + fmtTons(toCt(totals[year][mix] || 0));
     });
     csv += '\n';
   });
@@ -2291,7 +2229,7 @@ async function backupNow() {
 
 async function restoreFromBackup() {
   try {
-    if (!BACKEND === 'supabase' || !supabase) {
+    if (BACKEND !== 'supabase' || !supabase) {
       showBanner('Supabase not configured', 'error');
       return;
     }
@@ -2344,7 +2282,7 @@ async function restoreFromBackup() {
     files.forEach(file => {
       const btn = document.createElement('button');
       const date = new Date(file.created_at).toLocaleString();
-      btn.innerHTML = `📄 ${file.name}<br><small style="color: #888;">${date}</small>`;
+      btn.innerHTML = `📄 ${escapeHTML(file.name)}<br><small style="color: #888;">${escapeHTML(date)}</small>`;
       btn.style.cssText = `
         width: 100%; padding: 12px; text-align: left; border: none;
         border-bottom: 1px solid #eee; cursor: pointer; background: #f9f9f9;
@@ -2471,9 +2409,8 @@ function importJSON() {
           }
         }
 
-        state = imported;
-        saveState();
-        render();
+        state = migrateState(imported);
+        commit();
         showBanner('Data imported successfully', 'success');
       } catch (err) {
         showBanner('Import failed: ' + err.message, 'error');
@@ -2548,7 +2485,7 @@ function importCSV() {
             date,
             mix,
             plant,
-            tonsCt: toCt(tons),
+            tonsCt: tons, // shifts store whole tons in tonsCt (see addShift)
             bridge
           });
         }
@@ -2559,8 +2496,7 @@ function importCSV() {
 
         state.shifts.push(...importedShifts);
         state.nextSeq = Math.max(...state.shifts.map(s => s.seq || 0)) + 1;
-        saveState();
-        render();
+        commit();
         showBanner(`${importedShifts.length} shifts imported`, 'success');
       } catch (err) {
         showBanner('Import failed: ' + err.message, 'error');
@@ -2698,10 +2634,13 @@ function runSelfTest() {
   // Test C: Generation validation
   let testC = true;
   for (let i = 0; i < 100; i++) {
-    const lot = { index: 0, mixKey: 'test' };
     // Simulate a full lot for testing
-    const testLedger = [{ shift: { date: '2026-01-01' }, beforeCt: 0, afterCt: toCt(3500), excluded: false }];
-    const samples = generateSampleTons(lot, testLedger, mulberry32(42 + i));
+    const lot = { lotNo: 100, mix: 'Test', plant: '', mixKey: 'test', index: 0, createdDate: '2026-01-01', samples: [] };
+    const fullLotState = {
+      shifts: [{ id: 's1', seq: 1, date: '2026-01-01', mix: 'Test', plant: '', tonsCt: LOT_TONS, bridge: false }],
+      lots: [lot]
+    };
+    const samples = generateSampleTons(lot, fullLotState, mulberry32(42 + i));
     samples.forEach((s, idx) => {
       if (s.tonCt !== null && !isSampleInRange(lot, idx + 1, s.tonCt)) {
         testC = false;
@@ -2894,13 +2833,8 @@ async function signIn() {
 }
 
 function signOut() {
-  isAuthenticated = false;
   clearAuthToken();
-  state = null;
-  hideUserBar();
-  document.querySelector('.container').innerHTML = '';
-  showAuthModal();
-  console.log('User signed out');
+  location.reload();
 }
 
 function showUserBar() {
@@ -3126,6 +3060,45 @@ function attachAllButtonListeners() {
     if (e.key === 'Enter') resetPassword();
   };
 
+  document.getElementById('paramLot').textContent = `${LOT_TONS.toLocaleString('en-US')} t`;
+  document.getElementById('paramSublot').textContent = `${SUBLOT_TONS} t × ${SUBLOTS_PER_LOT}`;
+  document.getElementById('paramWindow').textContent = `${WINDOW_DAYS} days`;
+
+  const closeMenus = () => document.querySelectorAll('.menu.open, .lot-menu.open').forEach(m => m.classList.remove('open'));
+  const toggleMenu = (menu) => {
+    const wasOpen = menu.classList.contains('open');
+    closeMenus();
+    if (!wasOpen) menu.classList.add('open');
+  };
+
+  document.getElementById('dataMenuBtn').onclick = (e) => {
+    e.stopPropagation();
+    toggleMenu(document.getElementById('dataMenu'));
+  };
+  document.querySelectorAll('#dataMenu .menu-list button').forEach(b => b.addEventListener('click', closeMenus));
+  document.addEventListener('click', closeMenus);
+
+  document.getElementById('settingsBtn').onclick = () => document.getElementById('settingsPanel').classList.add('open');
+  document.getElementById('settingsCloseBtn').onclick = () => document.getElementById('settingsPanel').classList.remove('open');
+
+  // Lot headings: click folds the lot, ⋯ opens its actions
+  document.querySelector('#samplingTable tbody').addEventListener('click', (e) => {
+    const more = e.target.closest('.more');
+    if (more) {
+      e.stopPropagation();
+      toggleMenu(more.closest('.lot-menu'));
+      return;
+    }
+    if (e.target.closest('.lot-menu')) return; // menu item: its own onclick runs, document handler closes the menu
+    const lotRow = e.target.closest('tr.lot');
+    if (!lotRow) return;
+    const lotNo = Number(lotRow.dataset.lot);
+    const collapse = !collapsedLots.has(lotNo);
+    if (collapse) collapsedLots.add(lotNo); else collapsedLots.delete(lotNo);
+    lotRow.classList.toggle('collapsed', collapse);
+    document.querySelectorAll(`#samplingTable tr[data-parent="${lotNo}"]`).forEach(r => { r.style.display = collapse ? 'none' : ''; });
+  });
+
   console.log('✓ All button listeners attached');
 }
 
@@ -3186,20 +3159,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
   }
 
-  // Initial render: skip reconcileLots to preserve loaded lot structure
-  const today = new Date();
-  const derived = derive(state, today, true);
-  renderSummary(derived);
-  renderSamplingTable(derived);
-  renderShiftTable(derived);
-  renderAnnualSummary(derived);
-
-  // Update lot info after state is loaded
   const startLotNoInput = document.getElementById('startLotNo');
-  if (startLotNoInput && state) {
-    startLotNoInput.value = state.settings.startLotNo;
-    updateLotInfo();
-  }
+  if (startLotNoInput) startLotNoInput.value = state.settings.startLotNo;
+
+  render();
 });
 
 function updateLotInfo() {
@@ -3208,7 +3171,9 @@ function updateLotInfo() {
     if (!info || !state) return;
     const currentMax = state.lots.length > 0 ? Math.max(...state.lots.map(l => l.lotNo)) : state.settings.startLotNo - 1;
     const nextLot = state.nextLotNo === undefined ? state.settings.startLotNo + state.lots.length : state.nextLotNo;
-    info.textContent = `Next lot: ${nextLot} | Last lot: ${currentMax}`;
+    info.textContent = `Next lot: ${nextLot} · Last lot: ${currentMax}`;
+    const param = document.getElementById('paramNextLot');
+    if (param) param.textContent = nextLot;
   } catch (e) {
     console.error('updateLotInfo error:', e);
   }
