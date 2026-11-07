@@ -295,15 +295,74 @@
       .cols { grid-template-columns: 1fr; }
       .titleblock { grid-template-columns: 1fr; }
     }
-    @media (max-width: 700px) {
-      .appbar { padding: 0 12px; gap: 10px; }
-      .appname, .status { display: none; }
-      main { padding: 16px; }
-      .params { flex-wrap: wrap; }
-      .entry { grid-template-columns: 1fr 1fr; }
-      .lot-line { grid-template-columns: 14px 56px minmax(0, 1fr) 24px; }
+
+    /* Phase 1: Mobile Support — Tablet (768px-1024px) */
+    @media (max-width: 1023px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* Phase 1: Mobile Support — Mobile (< 768px) */
+    @media (max-width: 767px) {
+      /* Appbar: reduce height, hide secondary elements */
+      .appbar { height: 44px; padding: 0 12px; gap: 10px; }
+      .appname { display: none; }
+      .status { display: none; }
+      .mark { width: 24px; height: 24px; font-size: 8px; }
+
+      /* Main: adjust padding for smaller screens */
+      main { padding: 12px 12px 24px; max-width: 100%; }
+
+      /* Title block: single column */
+      .titleblock { grid-template-columns: 1fr; padding: 12px 16px; }
+      h1 { font-size: 18px; }
+
+      /* Parameters: stack vertically */
+      .params { flex-direction: column; border: none; }
+      .param { padding: 8px 0; border-left: 0; border-bottom: 1px solid var(--line); }
+      .param:last-child { border-bottom: 0; }
+      .param .k { font-size: 10px; }
+      .param .v { font-size: 14px; }
+
+      /* Metrics: single column on small mobile */
+      .metrics { grid-template-columns: 1fr; }
+
+      /* Layouts: single column */
+      .cols { grid-template-columns: 1fr; gap: 12px; }
+
+      /* Forms and inputs: larger touch targets (44px minimum) */
+      .btn { padding: 10px 16px; height: auto; min-height: 44px; font-size: 14px; }
+      input, select { height: 44px; padding: 0 12px; font-size: 16px; }
+
+      /* Menu: stack vertically */
+      .menu-list { min-width: 160px; right: auto; left: 0; }
+      .menu-list button { padding: 12px 16px; }
+
+      /* Lot list optimizations */
+      .entry { grid-template-columns: 1fr; }
+      .lot-line { grid-template-columns: 14px 56px minmax(0, 1fr) 24px; gap: 8px; }
       .gauge, .tag { display: none; }
-      .acts button { visibility: visible; }
+      td { padding: 10px 12px; }
+
+      /* Tables: horizontal scroll on very small */
+      .scroll { max-height: none; }
+      table { font-size: 12px; }
+      th { padding: 10px 12px; }
+    }
+
+    /* Phase 1: Mobile Support — Small Phone (< 480px) */
+    @media (max-width: 479px) {
+      main { padding: 8px 8px 16px; }
+      .titleblock { padding: 10px 12px; }
+      h1 { font-size: 16px; }
+      .appbar { gap: 8px; }
+      .bar-btn { padding: 6px 10px; font-size: 11px; }
+
+      /* Modal: full-screen on small phones */
+      .auth-modal-content { width: 95%; max-width: 100%; }
+
+      /* Reduce spacing everywhere */
+      .metrics { margin-bottom: 12px; }
+      .banner { padding: 6px 10px; margin-bottom: 12px; }
     }
   </style>
 
@@ -487,6 +546,21 @@
 </main>
 
 <script>
+// ============================================================================
+// MOBILE DETECTION (Phase 1: Mobile Support)
+// ============================================================================
+function detectDevice() {
+  const width = window.innerWidth;
+  const isMobile = width < 768;
+  const isTablet = width >= 768 && width < 1024;
+  const device = isMobile ? 'mobile' : (isTablet ? 'tablet' : 'desktop');
+  document.documentElement.setAttribute('data-device', device);
+  return device;
+}
+
+detectDevice();
+window.addEventListener('resize', () => detectDevice());
+
 // ============================================================================
 // CONFIG CONSTANTS (change these values here)
 // ============================================================================
