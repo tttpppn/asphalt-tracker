@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=1440, initial-scale=0.5, user-scalable=yes">
+  <meta name="viewport" content="width=1440, initial-scale=0.5, user-scalable=no">
   <title>PWL Asphalt Sampling Tracker - Updated</title>
   <style>
     :root {
@@ -523,20 +523,24 @@ document.addEventListener('touchend', (e) => {
   const currentTime = new Date().getTime();
   const tapLength = currentTime - lastTap;
 
-  // Double-tap detected (< 300ms between taps)
-  if (tapLength < 300 && tapLength > 0) {
-    e.preventDefault();
+  // Double-tap detected (< 500ms between taps)
+  if (tapLength < 500 && tapLength > 50) {
     isZoomedIn = !isZoomedIn;
 
     if (isZoomedIn) {
-      // Zoom in to 100% (interactive view)
-      document.documentElement.style.zoom = '100%';
-      document.documentElement.style.transform = 'scale(1)';
+      // Zoom in to 100% (interactive view) - set viewport back to 1
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no');
+      }
+      document.body.style.transform = 'scale(1)';
     } else {
       // Zoom out to 50% (full page view)
-      document.documentElement.style.zoom = '50%';
-      document.documentElement.style.transform = 'scale(0.5)';
-      document.documentElement.style.transformOrigin = 'top left';
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        meta.setAttribute('content', 'width=1440, initial-scale=0.5, user-scalable=no');
+      }
+      document.body.style.transform = 'scale(1)';
     }
   }
 
