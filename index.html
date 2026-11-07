@@ -514,6 +514,26 @@ detectDevice();
 window.addEventListener('resize', () => detectDevice());
 
 // ============================================================================
+// MOBILE VIEWPORT MANAGEMENT
+// ============================================================================
+function setFullPageView() {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (meta) {
+    meta.setAttribute('content', 'width=1440, initial-scale=0.5, user-scalable=no');
+  }
+}
+
+function setInteractiveView() {
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (meta) {
+    meta.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no');
+  }
+}
+
+// Initialize to full-page view on load
+setFullPageView();
+
+// ============================================================================
 // DOUBLE-TAP TO TOGGLE ZOOM (Mobile View)
 // ============================================================================
 let lastTap = 0;
@@ -524,23 +544,13 @@ document.addEventListener('touchend', (e) => {
   const tapLength = currentTime - lastTap;
 
   // Double-tap detected (< 500ms between taps)
-  if (tapLength < 500 && tapLength > 50) {
+  if (tapLength < 500 && tapLength > 50 && e.touches.length === 0) {
     isZoomedIn = !isZoomedIn;
 
     if (isZoomedIn) {
-      // Zoom in to 100% (interactive view) - set viewport back to 1
-      const meta = document.querySelector('meta[name="viewport"]');
-      if (meta) {
-        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no');
-      }
-      document.body.style.transform = 'scale(1)';
+      setInteractiveView();
     } else {
-      // Zoom out to 50% (full page view)
-      const meta = document.querySelector('meta[name="viewport"]');
-      if (meta) {
-        meta.setAttribute('content', 'width=1440, initial-scale=0.5, user-scalable=no');
-      }
-      document.body.style.transform = 'scale(1)';
+      setFullPageView();
     }
   }
 
@@ -2899,6 +2909,7 @@ function signOut() {
 
 function showUserBar() {
   document.getElementById('userBar').style.display = 'block';
+  setFullPageView(); // Reset to full-page view after login
 }
 
 function hideUserBar() {
