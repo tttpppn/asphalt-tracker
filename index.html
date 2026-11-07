@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=1440, initial-scale=0.5, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>PWL Asphalt Sampling Tracker - Updated</title>
   <style>
     :root {
@@ -29,24 +29,84 @@
       line-height: 1.4;
     }
 
-    /* Mobile font scaling — readable when zoomed at 50% */
+    /* Phase 2: Mobile Responsive Layout */
     @media (max-width: 768px) {
-      body { font-size: 18px; }
-      .appbar { font-size: 16px; }
-      .appname { font-size: 18px; }
-      h1 { font-size: 28px; }
-      h2 { font-size: 20px; }
-      .crumb { font-size: 13px; }
-      .param .k { font-size: 12px; }
-      .param .v { font-size: 20px; }
-      .metric .k { font-size: 14px; }
-      .metric .v { font-size: 32px; }
-      .btn { font-size: 16px; padding: 8px 14px; }
-      .bar-btn { font-size: 14px; }
-      input, select { font-size: 18px; height: 40px; padding: 0 10px; }
-      th { font-size: 13px; }
-      td { font-size: 14px; }
-      table { font-size: 14px; }
+      /* Typography - larger and readable */
+      body { font-size: 16px; }
+      h1 { font-size: 24px; margin-bottom: 16px; }
+      h2 { font-size: 18px; }
+      .crumb { font-size: 12px; }
+
+      /* Appbar - compact on mobile */
+      .appbar { height: 56px; padding: 0 16px; gap: 12px; }
+      .appname { display: block; font-size: 16px; }
+      .mark { width: 32px; height: 32px; font-size: 11px; }
+      .status { display: none; }
+      .bar-btn { font-size: 13px; padding: 6px 12px; }
+
+      /* Main layout - full width with padding */
+      main { max-width: 100%; padding: 16px; margin: 0; }
+
+      /* Title block - single column, card-like */
+      .titleblock {
+        grid-template-columns: 1fr;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        gap: 12px;
+      }
+
+      /* Parameters - stack vertically, card layout */
+      .params {
+        flex-direction: column;
+        border: none;
+        gap: 0;
+        background: none;
+      }
+      .param {
+        padding: 12px 0;
+        border-left: 0;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .param:last-child { border-bottom: 0; }
+      .param .k { font-size: 12px; text-transform: uppercase; color: var(--faint); }
+      .param .v { font-size: 18px; font-weight: 600; }
+
+      /* Metrics - single or two column */
+      .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+      .metric { padding: 12px; }
+      .metric .k { font-size: 11px; }
+      .metric .v { font-size: 24px; }
+
+      /* Panels and layouts - single column */
+      .cols { grid-template-columns: 1fr; gap: 16px; }
+      .panel { border-radius: 8px; }
+      .panel-hd { padding: 12px 16px; height: 40px; }
+      .panel-hd h2 { font-size: 14px; }
+
+      /* Forms and inputs - large touch targets (48px minimum) */
+      .btn { font-size: 15px; padding: 12px 16px; height: auto; min-height: 48px; border-radius: 4px; }
+      .btn.primary { font-size: 16px; }
+      input, select { font-size: 16px; height: 48px; padding: 0 12px; border-radius: 4px; }
+
+      /* Tables - mobile-friendly */
+      .entry { grid-template-columns: 1fr; }
+      .lot-line { grid-template-columns: 14px 1fr 24px; gap: 8px; }
+      .gauge, .tag { display: none; }
+      th { font-size: 12px; padding: 12px 16px; }
+      td { padding: 12px 16px; font-size: 14px; }
+      .scroll { max-height: 400px; }
+
+      /* Menu - full width on mobile */
+      .menu-list { position: fixed; right: 0; left: 0; top: auto; bottom: 0; width: 100%; min-width: 100%; border-radius: 8px 8px 0 0; box-shadow: 0 -2px 8px rgba(0,0,0,0.1); max-height: 60vh; overflow-y: auto; }
+      .menu-list button { padding: 16px; font-size: 16px; }
+
+      /* Modals - full screen on mobile */
+      .auth-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; }
+      .auth-modal-content { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 80vh; }
     }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .spacer { flex: 1; }
@@ -513,49 +573,6 @@ function detectDevice() {
 detectDevice();
 window.addEventListener('resize', () => detectDevice());
 
-// ============================================================================
-// MOBILE VIEWPORT MANAGEMENT
-// ============================================================================
-function setFullPageView() {
-  const meta = document.querySelector('meta[name="viewport"]');
-  if (meta) {
-    meta.setAttribute('content', 'width=1440, initial-scale=0.5, user-scalable=no');
-  }
-}
-
-function setInteractiveView() {
-  const meta = document.querySelector('meta[name="viewport"]');
-  if (meta) {
-    meta.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=no');
-  }
-}
-
-// Initialize to full-page view on load
-setFullPageView();
-
-// ============================================================================
-// DOUBLE-TAP TO TOGGLE ZOOM (Mobile View)
-// ============================================================================
-let lastTap = 0;
-let isZoomedIn = false;
-
-document.addEventListener('touchend', (e) => {
-  const currentTime = new Date().getTime();
-  const tapLength = currentTime - lastTap;
-
-  // Double-tap detected (< 500ms between taps)
-  if (tapLength < 500 && tapLength > 50 && e.touches.length === 0) {
-    isZoomedIn = !isZoomedIn;
-
-    if (isZoomedIn) {
-      setInteractiveView();
-    } else {
-      setFullPageView();
-    }
-  }
-
-  lastTap = currentTime;
-});
 
 // ============================================================================
 // CONFIG CONSTANTS (change these values here)
@@ -2909,7 +2926,6 @@ function signOut() {
 
 function showUserBar() {
   document.getElementById('userBar').style.display = 'block';
-  setFullPageView(); // Reset to full-page view after login
 }
 
 function hideUserBar() {
