@@ -28,6 +28,26 @@
       background: var(--bg);
       line-height: 1.4;
     }
+
+    /* Mobile font scaling — readable when zoomed at 50% */
+    @media (max-width: 768px) {
+      body { font-size: 18px; }
+      .appbar { font-size: 16px; }
+      .appname { font-size: 18px; }
+      h1 { font-size: 28px; }
+      h2 { font-size: 20px; }
+      .crumb { font-size: 13px; }
+      .param .k { font-size: 12px; }
+      .param .v { font-size: 20px; }
+      .metric .k { font-size: 14px; }
+      .metric .v { font-size: 32px; }
+      .btn { font-size: 16px; padding: 8px 14px; }
+      .bar-btn { font-size: 14px; }
+      input, select { font-size: 18px; height: 40px; padding: 0 10px; }
+      th { font-size: 13px; }
+      td { font-size: 14px; }
+      table { font-size: 14px; }
+    }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .spacer { flex: 1; }
     .muted { color: var(--faint); }
