@@ -84,11 +84,25 @@
       .param .k { font-size: 10px; text-transform: uppercase; color: var(--faint); letter-spacing: 0.4px; }
       .param .v { font-size: 16px; font-weight: 600; line-height: 1.2; }
 
-      /* Metrics - single or two column */
-      .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
-      .metric { padding: 12px; }
-      .metric .k { font-size: 11px; }
-      .metric .v { font-size: 24px; }
+      /* Metrics - PMA, LOTS, SAMPLES summary box */
+      .metrics {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 14px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px;
+      }
+      .metric {
+        background: none;
+        border: none;
+        padding: 8px;
+        text-align: center;
+      }
+      .metric .k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--muted); }
+      .metric .v { font-size: 18px; font-weight: 600; margin-top: 4px; }
+      .metric .s { font-size: 11px; color: var(--faint); margin-top: 2px; }
 
       /* Panels and layouts - single column */
       .cols { grid-template-columns: 1fr; gap: 12px; }
