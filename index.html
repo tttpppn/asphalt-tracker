@@ -494,6 +494,36 @@ detectDevice();
 window.addEventListener('resize', () => detectDevice());
 
 // ============================================================================
+// DOUBLE-TAP TO TOGGLE ZOOM (Mobile View)
+// ============================================================================
+let lastTap = 0;
+let isZoomedIn = false;
+
+document.addEventListener('touchend', (e) => {
+  const currentTime = new Date().getTime();
+  const tapLength = currentTime - lastTap;
+
+  // Double-tap detected (< 300ms between taps)
+  if (tapLength < 300 && tapLength > 0) {
+    e.preventDefault();
+    isZoomedIn = !isZoomedIn;
+
+    if (isZoomedIn) {
+      // Zoom in to 100% (interactive view)
+      document.documentElement.style.zoom = '100%';
+      document.documentElement.style.transform = 'scale(1)';
+    } else {
+      // Zoom out to 50% (full page view)
+      document.documentElement.style.zoom = '50%';
+      document.documentElement.style.transform = 'scale(0.5)';
+      document.documentElement.style.transformOrigin = 'top left';
+    }
+  }
+
+  lastTap = currentTime;
+});
+
+// ============================================================================
 // CONFIG CONSTANTS (change these values here)
 // ============================================================================
 const LOT_TONS = 3500;
