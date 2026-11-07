@@ -47,33 +47,42 @@
       /* Main layout - full width with padding */
       main { max-width: 100%; padding: 16px; margin: 0; }
 
-      /* Title block - single column, card-like */
+      /* Title block - compact, proportioned for mobile */
       .titleblock {
         grid-template-columns: 1fr;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        gap: 12px;
+        border-radius: 6px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-top: 3px solid var(--accent);
       }
 
-      /* Parameters - stack vertically, card layout */
+      .crumb { font-size: 10px; margin-bottom: 2px; }
+      h1 { font-size: 20px; margin: 0 0 6px 0; font-weight: 600; }
+
+      /* Parameters - 2 column grid, compact */
       .params {
-        flex-direction: column;
+        flex-direction: row;
         border: none;
         gap: 0;
         background: none;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        column-gap: 14px;
+        row-gap: 8px;
       }
       .param {
-        padding: 12px 0;
+        padding: 0;
         border-left: 0;
-        border-bottom: 1px solid var(--line);
+        border-bottom: none;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 2px;
       }
-      .param:last-child { border-bottom: 0; }
-      .param .k { font-size: 12px; text-transform: uppercase; color: var(--faint); }
-      .param .v { font-size: 18px; font-weight: 600; }
+      .param:first-child { border: 0; }
+      .param .k { font-size: 10px; text-transform: uppercase; color: var(--faint); letter-spacing: 0.4px; }
+      .param .v { font-size: 16px; font-weight: 600; line-height: 1.2; }
 
       /* Metrics - single or two column */
       .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
