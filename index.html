@@ -58,7 +58,7 @@
         border-top: 3px solid var(--accent);
       }
 
-      .crumb { font-size: 10px; margin-bottom: 2px; }
+      .crumb { font-size: 11px; margin-bottom: 2px; }
       h1 { font-size: 20px; margin: 0 0 6px 0; font-weight: 600; }
 
       /* Parameters - 2 column grid, compact */
@@ -81,7 +81,7 @@
         gap: 2px;
       }
       .param:first-child { border: 0; }
-      .param .k { font-size: 10px; text-transform: uppercase; color: var(--faint); letter-spacing: 0.4px; }
+      .param .k { font-size: 10px; text-transform: uppercase; color: var(--faint); letter-spacing: 0.4px; font-weight: 600; }
       .param .v { font-size: 16px; font-weight: 600; line-height: 1.2; }
 
       /* Metrics - PMA, LOTS, SAMPLES summary box */
@@ -100,16 +100,16 @@
         padding: 8px;
         text-align: center;
       }
-      .metric .k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--muted); }
-      .metric .v { font-size: 18px; font-weight: 600; margin-top: 4px; }
+      .metric .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--faint); font-weight: 600; }
+      .metric .v { font-size: 16px; font-weight: 600; margin-top: 4px; }
       .metric .s { font-size: 11px; color: var(--faint); margin-top: 2px; }
 
       /* Panels and layouts - single column */
       .cols { grid-template-columns: 1fr; gap: 12px; }
       .panel { border-radius: 6px; border: 1px solid var(--line); }
       .panel-hd { padding: 12px 14px; height: auto; min-height: 36px; border-bottom: 1px solid var(--line); }
-      .panel-hd h2 { font-size: 13px; margin: 0; }
-      .panel-hd .meta { font-size: 11px; }
+      .panel-hd h2 { font-size: 14px; margin: 0; font-weight: 600; text-transform: capitalize; }
+      .panel-hd .meta { font-size: 11px; color: var(--faint); }
 
       /* Panel content - compact on mobile */
       .filters { padding: 8px 12px; gap: 6px; flex-wrap: wrap; }
