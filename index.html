@@ -2968,11 +2968,26 @@ async function signIn() {
 
 function signOut() {
   clearAuthToken();
+
+  // Exit fullscreen when signing out
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(err => {
+      console.log('Exit fullscreen failed:', err);
+    });
+  }
+
   location.reload();
 }
 
 function showUserBar() {
   document.getElementById('userBar').style.display = 'block';
+
+  // Request fullscreen on mobile when signed in
+  if (window.innerWidth < 768 && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log('Fullscreen request failed:', err);
+    });
+  }
 }
 
 function hideUserBar() {
