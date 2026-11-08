@@ -2982,11 +2982,22 @@ function signOut() {
 function showUserBar() {
   document.getElementById('userBar').style.display = 'block';
 
-  // Request fullscreen on mobile when signed in
-  if (window.innerWidth < 768 && document.documentElement.requestFullscreen) {
-    document.documentElement.requestFullscreen().catch(err => {
-      console.log('Fullscreen request failed:', err);
-    });
+  // Request fullscreen on first touch/click after sign-in (mobile only)
+  if (window.innerWidth < 768) {
+    const requestFullscreenOnInteraction = () => {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log('Fullscreen request failed:', err);
+        });
+      }
+      // Remove listeners after use
+      document.removeEventListener('touchstart', requestFullscreenOnInteraction);
+      document.removeEventListener('click', requestFullscreenOnInteraction);
+    };
+
+    // Request fullscreen on first user interaction (tap or click)
+    document.addEventListener('touchstart', requestFullscreenOnInteraction, { once: true });
+    document.addEventListener('click', requestFullscreenOnInteraction, { once: true });
   }
 }
 
