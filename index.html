@@ -138,9 +138,21 @@
       .menu-list { position: fixed; right: 0; left: 0; top: auto; bottom: 0; width: 100%; min-width: 100%; border-radius: 8px 8px 0 0; box-shadow: 0 -2px 8px rgba(0,0,0,0.1); max-height: 60vh; overflow-y: auto; }
       .menu-list button { padding: 16px; font-size: 16px; }
 
-      /* Modals - full screen on mobile */
-      .auth-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; }
-      .auth-modal-content { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 80vh; }
+      /* Modals - full screen bottom sheet on mobile */
+      .auth-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
+      .auth-modal-content {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 16px 16px 0 0;
+        max-height: 90vh;
+        padding: 20px 16px 24px !important;
+        overflow-y: auto;
+      }
+      .auth-modal-content h2 { font-size: 22px !important; margin-bottom: 6px; }
+      .auth-modal-content p { font-size: 14px !important; margin-bottom: 16px; }
+      .auth-modal-content label { font-size: 11px !important; margin-bottom: 8px; }
+      .auth-modal-content input { height: 48px !important; font-size: 16px !important; margin-bottom: 16px; }
+      .auth-modal-content .btn { height: 48px !important; font-size: 16px !important; margin-bottom: 12px; }
     }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .spacer { flex: 1; }
@@ -393,15 +405,16 @@
     .auth-modal-content {
       background: var(--surface);
       border-top: 3px solid var(--accent);
-      padding: 28px 28px 20px;
-      width: 90%; max-width: 380px;
+      padding: 24px 20px 20px;
+      width: 90%; max-width: 400px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      border-radius: 12px 12px 0 0;
     }
-    .auth-modal-content h2 { font-size: 18px; font-weight: 600; margin-bottom: 2px; }
-    .auth-modal-content p { color: var(--muted); margin-bottom: 18px; font-size: 13px; }
-    .auth-modal-content label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 3px; }
-    .auth-modal-content input { width: 100%; height: 34px; margin-bottom: 12px; }
-    .auth-modal-content .btn { width: 100%; height: 34px; margin-bottom: 8px; }
+    .auth-modal-content h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; line-height: 1.2; }
+    .auth-modal-content p { color: var(--muted); margin-bottom: 20px; font-size: 14px; line-height: 1.4; }
+    .auth-modal-content label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+    .auth-modal-content input { width: 100%; height: 44px; margin-bottom: 14px; font-size: 16px; padding: 0 12px; }
+    .auth-modal-content .btn { width: 100%; height: 44px; margin-bottom: 10px; font-size: 16px; }
     .auth-error { color: var(--danger); background: #fdf1f0; border-left: 3px solid var(--danger); padding: 8px 10px; margin-bottom: 12px; font-size: 13px; }
     .auth-loading { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
 
