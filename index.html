@@ -131,8 +131,9 @@
       input, select { font-size: 16px; height: 48px; padding: 0 12px; border-radius: 4px; }
 
       /* Tables - mobile-friendly */
-      .entry { grid-template-columns: 1fr !important; gap: 8px; padding: 10px 12px; background: yellow !important; }
-      .field { min-width: 0; }
+      .entry { grid-template-columns: 1fr !important; gap: 8px; padding: 10px 12px; }
+      .field { min-width: 0; display: flex; flex-direction: column; }
+      .field label { margin-bottom: 4px; }
       .field input, .field select { min-width: 0; width: 100%; }
       .field.wide { grid-column: auto; }
       .entry-actions { grid-column: auto; }
