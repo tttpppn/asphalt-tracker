@@ -1293,66 +1293,35 @@ async function persistState() {
   }
 
   try {
-    // 1. Upsert settings (single row, id=1)
+    // Prepare all rows upfront
     const settingsRow = {
       id: 1,
       start_lot_no: state.startLotNo ?? 100,
       next_seq: state.nextSeq ?? 0,
       next_lot_no: state.nextLotNo ?? 105,
     };
-    const { error: settingsError } = await supabase
-      .from('settings')
-      .upsert(settingsRow, { onConflict: 'id' });
-    if (settingsError) {
-      console.error('persistState settings error:', settingsError);
-      showBanner(`Persist failed: settings ${settingsError.message}`, 'error');
-      return;
-    }
 
-    // 2. Upsert lots
-    if (state.lots && state.lots.length > 0) {
-      const lotsRows = state.lots.map(lot => ({
-        lot_no: lot.lotNo,
-        idx: lot.index,
-        mix: lot.mix,
-        plant: lot.plant || '',
-        mix_key: lot.mixKey,
-        created_date: lot.createdDate,
-        expiration_date: lot.expirationDate,
-      }));
-      const { error: lotsError } = await supabase
-        .from('lots')
-        .upsert(lotsRows, { onConflict: 'lot_no' });
-      if (lotsError) {
-        console.error('persistState lots error:', lotsError);
-        showBanner(`Persist failed: lots ${lotsError.message}`, 'error');
-        return;
-      }
-    }
+    const lotsRows = (state.lots && state.lots.length > 0) ? state.lots.map(lot => ({
+      lot_no: lot.lotNo,
+      idx: lot.index,
+      mix: lot.mix,
+      plant: lot.plant || '',
+      mix_key: lot.mixKey,
+      created_date: lot.createdDate,
+      expiration_date: lot.expirationDate,
+    })) : [];
 
-    // 3. Upsert shifts
-    if (state.shifts && state.shifts.length > 0) {
-      const shiftsRows = state.shifts.map(shift => ({
-        id: shift.id,
-        date: shift.date,
-        mix: shift.mix,
-        plant: shift.plant || '',
-        tons_ct: shift.tonsCt,
-        locations: shift.locations || null,
-        bridge_deck: shift.bridge ?? false,
-        seq: shift.seq,
-      }));
-      const { error: shiftsError } = await supabase
-        .from('shifts')
-        .upsert(shiftsRows, { onConflict: 'id' });
-      if (shiftsError) {
-        console.error('persistState shifts error:', shiftsError);
-        showBanner(`Persist failed: shifts ${shiftsError.message}`, 'error');
-        return;
-      }
-    }
+    const shiftsRows = (state.shifts && state.shifts.length > 0) ? state.shifts.map(shift => ({
+      id: shift.id,
+      date: shift.date,
+      mix: shift.mix,
+      plant: shift.plant || '',
+      tons_ct: shift.tonsCt,
+      locations: shift.locations || null,
+      bridge_deck: shift.bridge ?? false,
+      seq: shift.seq,
+    })) : [];
 
-    // 4. Upsert samples
     const samplesRows = [];
     if (state.lots) {
       state.lots.forEach(lot => {
@@ -1368,15 +1337,35 @@ async function persistState() {
         }
       });
     }
-    if (samplesRows.length > 0) {
-      const { error: samplesError } = await supabase
-        .from('samples')
-        .upsert(samplesRows, { onConflict: 'lot_no,sublot_number' });
-      if (samplesError) {
-        console.error('persistState samples error:', samplesError);
-        showBanner(`Persist failed: samples ${samplesError?.message || JSON.stringify(samplesError)}`, 'error');
-        return;
-      }
+
+    // Win #4: Batch all upserts in parallel with Promise.all()
+    const [settingsRes, lotsRes, shiftsRes, samplesRes] = await Promise.all([
+      supabase.from('settings').upsert(settingsRow, { onConflict: 'id' }),
+      lotsRows.length > 0 ? supabase.from('lots').upsert(lotsRows, { onConflict: 'lot_no' }) : Promise.resolve({ error: null }),
+      shiftsRows.length > 0 ? supabase.from('shifts').upsert(shiftsRows, { onConflict: 'id' }) : Promise.resolve({ error: null }),
+      samplesRows.length > 0 ? supabase.from('samples').upsert(samplesRows, { onConflict: 'lot_no,sublot_number' }) : Promise.resolve({ error: null })
+    ]);
+
+    // Check for errors
+    if (settingsRes.error) {
+      console.error('persistState settings error:', settingsRes.error);
+      showBanner(`Persist failed: settings ${settingsRes.error.message}`, 'error');
+      return;
+    }
+    if (lotsRes.error) {
+      console.error('persistState lots error:', lotsRes.error);
+      showBanner(`Persist failed: lots ${lotsRes.error.message}`, 'error');
+      return;
+    }
+    if (shiftsRes.error) {
+      console.error('persistState shifts error:', shiftsRes.error);
+      showBanner(`Persist failed: shifts ${shiftsRes.error.message}`, 'error');
+      return;
+    }
+    if (samplesRes.error) {
+      console.error('persistState samples error:', samplesRes.error);
+      showBanner(`Persist failed: samples ${samplesRes.error?.message || JSON.stringify(samplesRes.error)}`, 'error');
+      return;
     }
 
     console.log('persistState: all tables synced');
@@ -1909,6 +1898,14 @@ function showBanner(msg, type = 'info') {
   setTimeout(() => { if (banner.contains(div)) banner.removeChild(div); }, 5000);
 }
 
+function debounce(fn, delay) {
+  let timer;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 function render() {
   const today = new Date();
   const derived = derive(state, today);
@@ -1922,6 +1919,8 @@ function render() {
   updatePlantList();
   updateLotInfo();
 }
+
+const debouncedRender = debounce(render, 300);
 
 function fmtNum(ct) {
   return (ct / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2032,7 +2031,7 @@ function renderSamplingTable(derived) {
   });
 
   const today = new Date();
-  let html = '';
+  const htmlRows = [];
   ordered.forEach(g => {
     const lot = g.lot;
     const lotNo = Number(lot.lotNo);
@@ -2043,7 +2042,7 @@ function renderSamplingTable(derived) {
     const pct = Math.min(100, g.tonnage / toCt(LOT_TONS) * 100);
     const collapsed = collapsedLots.has(lotNo);
 
-    html += `<tr class="lot${collapsed ? ' collapsed' : ''}" data-lot="${lotNo}">
+    htmlRows.push(`<tr class="lot${collapsed ? ' collapsed' : ''}" data-lot="${lotNo}">
       <td colspan="3" title="${escapeHTML(windowTip)}">
         <div class="lot-line">
           <span class="caret">▼</span>
@@ -2061,29 +2060,29 @@ function renderSamplingTable(derived) {
           </div>
         </div>
       </td>
-    </tr>`;
+    </tr>`);
 
     g.rows.sort((a, b) => a.sublot - b.sublot).forEach(row => {
       const sample = row.sample;
       const warning = !isSampleInRange(row.lot, row.sublot, sample.tonCt)
         ? `<div class="warning">Outside sublot range ${fmtNum(row.range.start)} – ${fmtNum(row.range.end)} t</div>`
         : '';
-      html += `<tr class="row" data-parent="${lotNo}"${collapsed ? ' style="display:none"' : ''}>
+      htmlRows.push(`<tr class="row" data-parent="${lotNo}"${collapsed ? ' style="display:none"' : ''}>
         <td>Sublot ${row.sublot}</td>
         <td class="num"><input type="number" class="sample-input" value="${sample.tonCt / 100}" step="1" min="0" onchange="editSample(${lotNo}, ${row.sublot}, Math.round(this.value * 100))">${warning}</td>
         <td>${escapeHTML(row.sampleDate || '—')}</td>
-      </tr>`;
+      </tr>`);
     });
   });
 
-  tbody.innerHTML = html || '<tr><td colspan="3" class="muted">No samples yet. Add a shift to create lots.</td></tr>';
+  tbody.innerHTML = htmlRows.length > 0 ? htmlRows.join('') : '<tr><td colspan="3" class="muted">No samples yet. Add a shift to create lots.</td></tr>';
   const meta = document.getElementById('samplingMeta');
   if (meta) meta.textContent = `${ordered.length} lot${ordered.length === 1 ? '' : 's'} · ${rows.length} sample${rows.length === 1 ? '' : 's'}`;
 }
 
 function renderShiftTable(derived) {
   const tbody = document.querySelector('#shiftTable tbody');
-  let html = '';
+  const htmlRows = [];
 
   derived.shiftRows.forEach(row => {
     const shift = row.shift;
@@ -2098,7 +2097,7 @@ function renderShiftTable(derived) {
     }
     const locations = shift.locations ? `<div class="sub">${escapeHTML(shift.locations)}</div>` : '';
 
-    html += `<tr class="row">
+    htmlRows.push(`<tr class="row">
       <td>${escapeHTML(shift.date)}</td>
       <td>${escapeHTML(shift.mix)}</td>
       <td>${escapeHTML(shift.plant || '—')}${locations}</td>
@@ -2109,15 +2108,15 @@ function renderShiftTable(derived) {
         <button type="button" onclick="editShiftUI(${jsArg(shift.id)})">Edit</button>
         <button type="button" class="del" onclick="if (confirm('Delete this shift?')) deleteShift(${jsArg(shift.id)})">Delete</button>
       </td>
-    </tr>`;
+    </tr>`);
 
     if (row.splits.length > 1 && row.splitLotNo === row.splits[0].lotNo) {
       const others = row.splits.slice(1).map(s => `${fmtNum(s.ct)} t to Lot ${Number(s.lotNo)}`).join(', ');
-      html += `<tr class="split"><td></td><td colspan="6">↳ Split: ${others}</td></tr>`;
+      htmlRows.push(`<tr class="split"><td></td><td colspan="6">↳ Split: ${others}</td></tr>`);
     }
   });
 
-  tbody.innerHTML = html || '<tr><td colspan="7" class="muted">No shifts yet.</td></tr>';
+  tbody.innerHTML = htmlRows.length > 0 ? htmlRows.join('') : '<tr><td colspan="7" class="muted">No shifts yet.</td></tr>';
   const meta = document.getElementById('shiftMeta');
   if (meta) meta.textContent = `${state.shifts.length} shift${state.shifts.length === 1 ? '' : 's'}`;
 }
@@ -3323,6 +3322,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (startLotNoInput) startLotNoInput.value = state.settings.startLotNo;
 
   render();
+
+  // Attach debounced render to filter inputs (Win #3: reduce renders on typing)
+  document.getElementById('filterLot').addEventListener('input', debouncedRender);
+  document.getElementById('filterMix').addEventListener('input', debouncedRender);
+  document.getElementById('hideEmpty').addEventListener('change', debouncedRender);
+  document.getElementById('sortMode').addEventListener('change', debouncedRender);
 });
 
 function updateLotInfo() {
