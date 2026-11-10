@@ -119,9 +119,10 @@
       .filters input { height: 40px; font-size: 16px; padding: 0 12px; }
       .scroll { max-height: 300px; }
 
-      /* Add button - full width on mobile */
-      .panel-hd { display: flex; flex-direction: column; gap: 8px; align-items: stretch; background: var(--surface); }
-      .panel-hd .btn { width: 100%; }
+      /* Add button - inline with title on mobile */
+      .panel-hd { display: flex; flex-direction: row; gap: 8px; align-items: center; background: var(--surface); }
+      .panel-hd h2 { flex: 1; }
+      .panel-hd .btn { flex-shrink: 0; white-space: nowrap; }
       .panel-hd .spacer { display: none; }
 
       /* Forms and inputs - large touch targets (48px minimum) */
