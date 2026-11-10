@@ -131,12 +131,11 @@
       input, select { font-size: 16px; height: 48px; padding: 0 12px; border-radius: 4px; }
 
       /* Tables - mobile-friendly */
-      .entry { grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px 8px; }
+      .entry { grid-template-columns: 1fr; gap: 8px; padding: 10px 12px; }
       .field { min-width: 0; }
       .field input, .field select { min-width: 0; width: 100%; }
-      #shiftMix { max-width: 80px; }
-      .field.wide { grid-column: span 2; }
-      .entry-actions { grid-column: span 2; }
+      .field.wide { grid-column: auto; }
+      .entry-actions { grid-column: auto; }
       .lot-line { grid-template-columns: 14px 1fr 24px; gap: 8px; }
       .gauge, .tag { display: none; }
       th { font-size: 12px; padding: 12px 16px; }
