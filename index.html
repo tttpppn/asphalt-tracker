@@ -145,7 +145,9 @@
       .scroll { max-height: 400px; }
 
       /* Menu - full width on mobile */
-      .menu-list { position: fixed !important; right: 0; left: 0; top: auto !important; bottom: 0; width: 100%; min-width: 100%; border-radius: 8px 8px 0 0; box-shadow: 0 -2px 8px rgba(0,0,0,0.1); max-height: 80vh; overflow-y: auto; background: var(--surface) !important; color: var(--text) !important; padding: 12px 0; border-top: 1px solid var(--line); display: none !important; }
+      .menu-backdrop { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: none !important; background: rgba(0, 0, 0, 0.3) !important; z-index: 29 !important; }
+      .menu.open .menu-backdrop { display: block !important; }
+      .menu-list { position: fixed !important; right: 0; left: 0; top: auto !important; bottom: 0; width: 100%; min-width: 100%; border-radius: 8px 8px 0 0; box-shadow: 0 -2px 8px rgba(0,0,0,0.1); max-height: 80vh; overflow-y: auto; background: var(--surface) !important; color: var(--text) !important; padding: 12px 0; border-top: 1px solid var(--line); display: none !important; z-index: 30 !important; }
       .menu.open .menu-list { display: block !important; }
       .menu-list button { padding: 16px !important; font-size: 16px !important; color: var(--text) !important; background: var(--surface) !important; display: block !important; }
       .menu-list .grp { padding: 12px 16px 4px !important; font-size: 12px !important; color: var(--muted) !important; }
@@ -487,6 +489,7 @@
       <div class="status" id="syncStatus"></div>
       <div class="menu" id="dataMenu">
         <button class="bar-btn" id="dataMenuBtn" type="button">Data ▾</button>
+        <div class="menu-backdrop" id="dataMenuBackdrop"></div>
         <div class="menu-list">
           <div class="grp">Export</div>
           <button id="exportCsvBtn" type="button">Export CSV</button>
@@ -3246,6 +3249,7 @@ function attachAllButtonListeners() {
     e.stopPropagation();
     toggleMenu(document.getElementById('dataMenu'));
   };
+  document.getElementById('dataMenuBackdrop').addEventListener('click', closeMenus);
   document.querySelectorAll('#dataMenu .menu-list button').forEach(b => b.addEventListener('click', closeMenus));
   document.addEventListener('click', closeMenus);
 
