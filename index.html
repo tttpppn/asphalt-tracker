@@ -105,7 +105,10 @@
       .metric .s { font-size: 11px; color: var(--faint); margin-top: 2px; }
 
       /* Panels and layouts - single column */
-      .cols { grid-template-columns: 1fr; gap: 12px; }
+      .cols { grid-template-columns: 1fr; gap: 12px; display: flex; flex-direction: column; }
+      .cols > .panel:nth-child(1) { order: 2; }  /* Sampling Tracker → 2nd */
+      .cols > .panel:nth-child(2) { order: 1; }  /* Shift Log → 1st */@antml:parameter>
+</invoke>
       .panel { border-radius: 6px; border: 1px solid var(--line); }
       .panel-hd { padding: 14px 16px; height: auto; min-height: 40px; border-bottom: 1px solid var(--line); }
       .panel-hd h2 { font-size: 16px !important; margin: 0; font-weight: 600; text-transform: capitalize; }
